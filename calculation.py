@@ -56,8 +56,8 @@ class Elements():
         """
         return NotImplementedError
 
-
-element_parameters = {1: {'length': 1, 'diameter': 0.5},
-                      2: {'length': 2, 'diameter': 0.25}}
-calc = Calculation(element_parameters)
+if __name__ == "__main__":
+    element_parameters = {1: {'length': 1, 'diameter': 0.5},
+                        2: {'length': 2, 'diameter': 0.25}}
+    calc = Calculation(element_parameters)
 
