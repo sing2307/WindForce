@@ -31,6 +31,7 @@ class WindForceGUI(tk.Tk):
         """
         super().__init__()
         self.init_main_window()
+        self.solution = None
 
     def init_main_window(self):
         """
@@ -49,10 +50,13 @@ class WindForceGUI(tk.Tk):
         # Add system image
         system_image_label = tk.Label(root, text="System Definition:", font=standard_font_1_bold)
         system_image_label.place(relx=0.6, rely=0.05)
-        system_image = Image.open(r'supp\system.png')
-        root.system_image_tk = ImageTk.PhotoImage(system_image)
-        system_image_label = tk.Label(root, image=root.system_image_tk)
-        system_image_label.place(relx=0.6, rely=0.1)
+        try:
+            system_image = Image.open(r'supp\system.png')
+            root.system_image_tk = ImageTk.PhotoImage(system_image)
+            system_image_label = tk.Label(root, image=root.system_image_tk)
+            system_image_label.place(relx=0.6, rely=0.1)
+        except FileNotFoundError:
+            pass
 
         # Add canvas for system visualization - DYNAMIC
         system_image_label = tk.Label(root, text="Current System:", font=standard_font_1_bold)
@@ -154,7 +158,42 @@ class WindForceGUI(tk.Tk):
         pass
 
     def start_calculation(self):
-        pass
+        """
+        todo
+        :return:
+        """
+
+        # creates FEM Solution window
+        fem_solution_window = tk.Toplevel(self)
+        fem_solution_window.title("FEM Solution")
+        fem_solution_window.geometry(f"{600}x{600}")
+
+        # graphical output
+        canvas_solution = tk.Canvas(fem_solution_window, width=400, height=550, bg="gray")
+        canvas_solution.place(relx=200/600-0.025, rely=(1-(550/600))/2)
+
+        # Selector for eigenfrequency
+        solution_eigen_freq_label = tk.Label(fem_solution_window, text="Select Eigenfrequency", font=WindForceGUI.STANDARD_FONT_1)
+        solution_eigen_freq_label.place(relx=0.025, rely=0.025)
+        solution_eigen_freqs_nbr = sorted(list(self.solution.keys()))
+        solution_calculated_eigen_freqs = [f"Eigenfreq.: {ef_nbr}" for ef_nbr in solution_eigen_freqs_nbr]
+        solution_eigen_freq_selected = tk.StringVar()
+        solution_eigen_freq_selected.set(solution_calculated_eigen_freqs[0])  # default value
+        dropdown_solution_eigen_freq = tk.OptionMenu(fem_solution_window, solution_eigen_freq_selected,
+                                                     *solution_calculated_eigen_freqs)
+        dropdown_solution_eigen_freq.place(relx=0.025, rely=0.075)
+
+        # Show Eigenfrequency
+        selected_eigen_freq = tk.StringVar()
+        selected_eigen_freq.set('None')
+        selected_eigen_freq_label = tk.Entry(fem_solution_window, textvariable=selected_eigen_freq,
+                                                 state='readonly', font=("Arial", 10), width=6)
+        selected_eigen_freq_label.place(relx=0.025, rely=0.135)
+
+
+        if self.solution is not None:
+            ...
+
 
     def program_info(self):
         info_window = tk.Toplevel(self)
@@ -165,10 +204,29 @@ class WindForceGUI(tk.Tk):
         info_label = tk.Label(info_window, text=info_str, font=WindForceGUI.STANDARD_FONT_2)
         info_label.place(relx=0.025, rely=0.1)
 
+    def development(self):
+        return_values = {0: {'eigenfreq': 15,
+                             'solution': [[0, 0], [0.1, 0.5], [0.2, 1],
+                                          [0.15, 1.5], [0.05, 2], [0, 2.5],
+                                          [-0.05, 3], [-0.1, 3.5], [-0.2, 4]]},
+                         1: {'eigenfreq': 35,
+                             'solution': [[0, 0], [0.2, 0.5], [0.4, 1],
+                                          [0.3, 1.5], [0.1, 2], [0, 2.5],
+                                          [-0.1, 3], [-0.2, 3.5], [-3, 4]]},
+                         2: {'eigenfreq': 155,
+                             'solution': [[0, 0], [0.1, 0.5], [-0.2, 1],
+                                          [0.15, 1.5], [-0.05, 2], [0, 2.5],
+                                          [0.05, 3], [-0.1, 3.5], [0.2, 4]]},
+                         }
+        self.solution = return_values
+
+
 
 
 
 
 if __name__ == '__main__':
     gui = WindForceGUI()
+    gui.development() # set solution for development before starting mainloop
     gui.mainloop()
+
