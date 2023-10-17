@@ -1,6 +1,6 @@
 from typing import Dict
 from abccalculation import ABCCalculation
-
+import numpy as np
 
 class Calculation(ABCCalculation):
     """
@@ -20,15 +20,15 @@ class Calculation(ABCCalculation):
         ...
         :return:
         """
-        print("kek")
-        #return NotImplemented
+
+        return self.solution
 
     def assembly_system_matrix(self):
         """
         Calculates element matrices for every section, assembly system
         :return:
         """
-        return NotImplemented
+        return np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 
     def solve_system(self):
         """
@@ -36,6 +36,22 @@ class Calculation(ABCCalculation):
         :return:
         """
         return NotImplemented
+
+    def start_calc(self):
+
+        all_element_matrices = list()
+        for sefc_id, section_values in self.sections.items():
+            section_height = section_values['sec_height']
+            element_matrix = Elements(section_height).calc_element_matrix()
+            all_element_matrices.append(element_matrix)
+        for elem in all_element_matrices:
+            print(elem)
+
+        system_matrix = self.assembly_system_matrix()
+        print(system_matrix)
+        self.solution = [[1, 3], [4, 5], [5, 6]]
+        self.return_solution()
+
 
 class Elements():
     """
@@ -49,15 +65,25 @@ class Elements():
         """
         self.element_parameters = element_parameters
 
-    def element_matrix(self):
+    def calc_element_matrix(self):
         """
         Calculates element matrix
         :return:
         """
-        return NotImplementedError
+
+        return np.array([[self.element_parameters * 11, 12], [21, 22]])
 
 if __name__ == "__main__":
-    element_parameters = {1: {'length': 1, 'diameter': 0.5},
-                        2: {'length': 2, 'diameter': 0.25}}
-    calc = Calculation(element_parameters)
+    sections = {0: {'sec_number': 0,
+                    'sec_height': 1},
+                1: {'sec_number': 1,
+                    'sec_height': 2}}
+    springs = {}
+    masses = {}
+    forces = {}
+    excentricity = {}
+    calculation_param = dict()
+    calc = Calculation(sections, springs, masses, forces, excentricity, calculation_param)
+    calc.start_calc()
+
 
