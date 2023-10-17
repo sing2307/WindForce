@@ -11,9 +11,9 @@ class ABCCalculation(ABC):
     ...
     """
 
-    def __init__(self, sections: Dict[int, Dict[Any]], springs: Dict[str, float],
-                 masses: Dict[str, float], forces: Dict[str, float], excentricity: Dict[str, float],
-                 calculation_param: Dict[str, float]):
+    def __init__(self, sections: Dict, springs: Dict,
+                 masses: Dict, forces: Dict, excentricity: Dict,
+                 calculation_param: Dict):
         """
 
         :param sections: Defines the sections of the beam with the following parameter:
