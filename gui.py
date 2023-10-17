@@ -49,7 +49,7 @@ class WindForceGUI(tk.Tk):
         # Add system image
         system_image_label = tk.Label(root, text="System Definition:", font=standard_font_1_bold)
         system_image_label.place(relx=0.6, rely=0.05)
-        system_image = Image.open('supp\system.png')
+        system_image = Image.open(r'supp\system.png')
         root.system_image_tk = ImageTk.PhotoImage(system_image)
         system_image_label = tk.Label(root, image=root.system_image_tk)
         system_image_label.place(relx=0.6, rely=0.1)
