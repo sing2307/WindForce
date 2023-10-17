@@ -7,12 +7,13 @@ class Calculation(ABCCalculation):
     Concrete class for calculation
     """
 
-    def __init__(self, sections):
+    def __init__(self, sections, springs: Dict, masses: Dict,
+                 forces: Dict, excentricity: Dict, calculation_param: Dict):
         """
         ...
         :param element_parameters:
         """
-        super().__init__(sections)
+        super().__init__(sections, springs, masses, forces, excentricity, calculation_param)
 
     def return_solution(self):
         """

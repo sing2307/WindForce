@@ -54,7 +54,7 @@ class WindForceGUI(tk.Tk):
         system_image_label = tk.Label(root, image=root.system_image_tk)
         system_image_label.place(relx=0.6, rely=0.1)
 
-        # Add canvas for system visualization
+        # Add canvas for system visualization - DYNAMIC
         system_image_label = tk.Label(root, text="Current System:", font=standard_font_1_bold)
         system_image_label.place(relx=0.25, rely=0.05)
         self.canvas = tk.Canvas(root, width=WindForceGUI.CANVAS_MAIN_WIDTH, height=WindForceGUI.CANVAS_MAIN_HEIGHT,
@@ -108,7 +108,7 @@ class WindForceGUI(tk.Tk):
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
         button_start_calculation.place(relx=0.025, rely=0.6)
 
-        # Current system information in bottom
+        # Current system information in bottom - DYNAMIC
         current_system_information_label = tk.Label(root, text="System Information:", font=standard_font_1_bold)
         current_system_information_label.place(relx=0.025, rely=0.7)
         initial_system_information = f"Some system information here\n like data for entered sections\netc."
