@@ -93,7 +93,7 @@ class ABCCalculation(ABC):
                                             'exc_area': val,
                                             'exc_Ip': val}
         :param calculation_param: Defines the calculation parameters
-                            fem_density         [???] # todo
+                            fem_density         [???] # todo: maybe density between 0...1?
                             fem_nbr_eigen_freq  []
                             fem_dmas            []
                             fem_exc             []
@@ -118,12 +118,11 @@ class ABCCalculation(ABC):
         displacement
         ->
         return {0: {'eigenfreq': 123,
-                    'solution': {0: {0,0},
-                                 1: {0.03,0.1},
-                                 n_max: {...}}},
+                    'solution': [[0,0],[x1, y1],[x_max, y_max},
                 1: {...},
                 eigenfreq_mnax: {...}
                }
+               todo: connectivity matrix needed?
         """
 
         pass
