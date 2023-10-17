@@ -1,0 +1,6 @@
+name: windforce
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pillow
