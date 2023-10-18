@@ -2,6 +2,9 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import tkinter.font as tkFont
 import math
+from tkinter import filedialog
+import numpy as np
+
 
 #################################################
 # Other
@@ -79,39 +82,49 @@ class WindForceGUI(tk.Tk):
 
         # Buttons for input parameters
         buttons_input_params_label = tk.Label(root, text="System Parameters", font=standard_font_1_bold)
-        buttons_input_params_label.place(relx=0.025, rely=0.15)
+        buttons_input_params_label.place(relx=0.025, rely=0.125)
         # Button Enter Sections
         button_enter_sections = tk.Button(root, text="Sections", command=self.enter_sections,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_sections.place(relx=0.025, rely=0.2)
+        button_enter_sections.place(relx=0.025, rely=0.175)
         # Button Enter Springs
         button_enter_springs = tk.Button(root, text="Springs", command=self.enter_springs,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_springs.place(relx=0.025, rely=0.25)
+        button_enter_springs.place(relx=0.025, rely=0.225)
         # Button Enter Masses
         button_enter_masses = tk.Button(root, text="Masses", command=self.enter_masses,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_masses.place(relx=0.025, rely=0.3)
+        button_enter_masses.place(relx=0.025, rely=0.275)
         # Button Enter Forces
         button_enter_forces = tk.Button(root, text="Forces", command=self.enter_forces,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_forces.place(relx=0.025, rely=0.35)
+        button_enter_forces.place(relx=0.025, rely=0.325)
         # Button Enter Excentricity
         button_enter_excentricity = tk.Button(root, text="Excentricity", command=self.enter_excentricity,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_excentricity.place(relx=0.025, rely=0.4)
+        button_enter_excentricity.place(relx=0.025, rely=0.375)
+
+        # Button open input file
+        button_open_input = tk.Button(root, text="Open Input File", command=self.open_input_file,
+                                 font=('Arial', 8), width=12, height=1)
+        button_open_input.place(relx=0.025, rely=0.44)
+
+        # Button save input file
+        button_save_input = tk.Button(root, text="Save Input File", command=self.save_input_file,
+                                 font=('Arial', 8), width=12, height=1)
+        button_save_input.place(relx=0.025, rely=0.49)
 
         # Buttons for Calculation parameters
         buttons_input_calc_params_label = tk.Label(root, text="Calculation", font=standard_font_1_bold)
-        buttons_input_calc_params_label.place(relx=0.025, rely=0.5)
+        buttons_input_calc_params_label.place(relx=0.025, rely=0.55)
         # Button Enter Calculation Parameters
         button_enter_calc_params = tk.Button(root, text="Calculation Parameter", command=self.enter_calc_params,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_enter_calc_params.place(relx=0.025, rely=0.55)
+        button_enter_calc_params.place(relx=0.025, rely=0.6)
         # Button Start Calculation
         button_start_calculation = tk.Button(root, text="Start Calculation", command=self.start_calculation,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_start_calculation.place(relx=0.025, rely=0.6)
+        button_start_calculation.place(relx=0.025, rely=0.65)
 
         # Current system information in bottom - DYNAMIC
         current_system_information_label = tk.Label(root, text="System Information:", font=standard_font_1_bold)
@@ -148,6 +161,25 @@ class WindForceGUI(tk.Tk):
         self.canvas_solution.create_line(1, 0, 1, height, fill='dark blue', width=6)
         self.canvas_solution.create_line(0, height + 1, width, height + 1, fill='dark blue', width=2)
         self.canvas_solution.create_line(width + 1, 0, width + 1, height, fill='dark blue', width=2)
+
+    def open_input_file(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Text Files", "*.txt")],
+            title="Open Input File",
+        )
+        if file_path:
+            with open(file_path, "r") as file:
+                content = file.read()
+
+    def save_input_file(self):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+            title="Save Input As",
+        )
+        if file_path:
+            with open(file_path, "w") as file:
+                file.write("Test_Input")
 
     def clear_all(self):
         pass
@@ -186,7 +218,7 @@ class WindForceGUI(tk.Tk):
                                          fill='dark green', width=2)
 
         for start_point, end_point in zip(solution_nodes[1:], solution_nodes[:-1]):
-            # There might be an error here with the mapping...
+            # todo There might be an error here with the transformation mapping...
             color_scale_factor = 8
             normalized_position_start_x = (start_point[0] / self.canvas_sol_w + (self.canvas_sol_w / 2) / self.canvas_sol_w) / 2
             normalized_position_end_x = (end_point[0] / self.canvas_sol_w + (self.canvas_sol_w / 2) / self.canvas_sol_w) / 2
@@ -220,6 +252,24 @@ class WindForceGUI(tk.Tk):
 
         return solution_nodes_transformed
 
+    def interpolate_list(self, node_list: list) -> list:
+        """
+        interpolates between nodes for better visualization for lower resolution
+        :param node_list:
+        :return:
+        """
+        if len(node_list) < 100:
+            x_data, y_data = zip(*node_list)
+            x_data = np.array(x_data)
+            y_data = np.array(y_data)
+            y_interpolation = np.linspace(min(y_data), max(y_data), num=100)
+            x_interpolation = np.interp(y_interpolation, y_data, x_data)
+            new_list = list(zip(x_interpolation, y_interpolation))
+
+            return [[x, y] for x, y in new_list]
+        else:
+            return node_list
+
     def start_calculation(self):
         """
         todo
@@ -237,6 +287,7 @@ class WindForceGUI(tk.Tk):
 
             eigen_freq_selected_freq = eigen_freq_selected['eigenfreq']
             solution_nodes = eigen_freq_selected['solution']
+            solution_nodes = self.interpolate_list(solution_nodes)
             solution_nodes_trans = self.transform_solution(solution_nodes)
 
             # update text
@@ -248,11 +299,15 @@ class WindForceGUI(tk.Tk):
             self.add_canvas_solution_static_elements()
             self.draw_solution(solution_nodes_trans)
 
-        def button_save_input():
-            ...
-
         def button_save_output():
-            ...
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+                title="Save Output As",
+            )
+            if file_path:
+                with open(file_path, "w") as file:
+                    file.write(self.solution)
 
         # creates FEM Solution window
         fem_solution_window = tk.Toplevel(self)
@@ -285,18 +340,16 @@ class WindForceGUI(tk.Tk):
                                                  state='readonly', font=("Arial", 10), width=15)
         selected_eigen_freq_label.place(relx=0.025, rely=0.135)
 
-        # Button save input
-        button_save_input = tk.Button(fem_solution_window, text="Save Input ", command=button_save_input,
-                                 font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
-        button_save_input.place(relx=0.025, rely=0.8)
-
         # Button save output
-        button_save_output = tk.Button(fem_solution_window, text="Save Input ", command=button_save_output,
+        button_save_output = tk.Button(fem_solution_window, text="Save Output ", command=button_save_output,
                                  font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
         button_save_output.place(relx=0.025, rely=0.85)
 
-        if self.solution is not None:
-            ...
+        # Solution first Eigenfrequency
+        update_solution()
+
+        # if self.solution is not None:
+        #     ...
 
 
     def program_info(self):
