@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import tkinter.font as tkFont
+import math
 
 #################################################
 # Other
@@ -135,6 +136,18 @@ class WindForceGUI(tk.Tk):
         self.canvas.create_line(0, height + 1, width, height + 1, fill='dark blue', width=2)
         self.canvas.create_line(width + 1, 0, width + 1, height, fill='dark blue', width=2)
 
+    def add_canvas_solution_static_elements(self):
+        width = self.canvas_sol_w
+        height = self.canvas_sol_h
+        gridspace = 20
+        for x in range(gridspace, width, gridspace):
+            self.canvas_solution.create_line(x, 0, x, height, fill="dark gray", width=1)
+        for y in range(gridspace, height, gridspace):
+            self.canvas_solution.create_line(0, y, width, y, fill="dark gray", width=1)
+        self.canvas_solution.create_line(1, 1, width, 1, fill='dark blue', width=4)
+        self.canvas_solution.create_line(1, 0, 1, height, fill='dark blue', width=6)
+        self.canvas_solution.create_line(0, height + 1, width, height + 1, fill='dark blue', width=2)
+        self.canvas_solution.create_line(width + 1, 0, width + 1, height, fill='dark blue', width=2)
 
     def clear_all(self):
         pass
@@ -157,11 +170,89 @@ class WindForceGUI(tk.Tk):
     def enter_calc_params(self):
         pass
 
+    def draw_solution(self, solution_nodes):
+
+        def get_color_from_position(point_x_position):
+            if point_x_position > 1:
+                point_x_position = 1
+            red = int(255 * point_x_position)
+            blue = int(255 * (1 - point_x_position))
+            green = 0
+            color_code = "#{:02X}{:02X}{:02X}".format(red, green, blue)
+
+            return color_code
+
+        self.canvas_solution.create_line(self.canvas_sol_w/2, self.canvas_sol_h, self.canvas_sol_w/2, solution_nodes[-1][1],
+                                         fill='dark green', width=2)
+
+        for start_point, end_point in zip(solution_nodes[1:], solution_nodes[:-1]):
+            # There might be an error here with the mapping...
+            color_scale_factor = 8
+            normalized_position_start_x = (start_point[0] / self.canvas_sol_w + (self.canvas_sol_w / 2) / self.canvas_sol_w) / 2
+            normalized_position_end_x = (end_point[0] / self.canvas_sol_w + (self.canvas_sol_w / 2) / self.canvas_sol_w) / 2
+            if abs(0.5 - normalized_position_start_x) >= abs(0.5 - normalized_position_end_x):
+                color_code = get_color_from_position(abs(normalized_position_start_x - 0.5) * color_scale_factor)
+            else:
+                color_code = get_color_from_position(abs(normalized_position_end_x - 0.5) * color_scale_factor)
+
+            self.canvas_solution.create_line(start_point[0], start_point[1], end_point[0], end_point[1],
+                                                 fill=color_code, width=6)
+
+
+    def transform_solution(self, solution_nodes):
+        canvas_sol_w = self.canvas_sol_w
+        canvas_sol_h = self.canvas_sol_h
+
+        canvas_sol_w = math.floor(canvas_sol_w * 3 / 4)
+        canvas_sol_h = math.floor(canvas_sol_h * 3 / 4)
+
+        sol_x = [p[0] for p in solution_nodes]
+        sol_y = [p[1] for p in solution_nodes]
+        min_x = min(sol_x)
+        max_x = max(sol_x)
+        min_y = min(sol_y)
+        max_y = max(sol_y)
+        dist_x = max_x - min_x
+        dist_y = max_y - min_y
+
+        solution_nodes_transformed = [[math.floor(elem[0] / dist_x * canvas_sol_w / 3 + self.canvas_sol_w / 2),
+                                       -elem[1] / dist_y * canvas_sol_h + self.canvas_sol_h] for elem in solution_nodes]
+
+        return solution_nodes_transformed
+
     def start_calculation(self):
         """
         todo
         :return:
         """
+
+        def update_solution(*args):
+            eigen_freq_selected = solution_eigen_freq_selected.get()
+            eigen_freq_selected = eigen_freq_selected.split('Eigenfreq.: ')[-1]
+            solution = self.solution
+            eigen_freq_selected = solution.get(int(eigen_freq_selected), None)
+
+            if not eigen_freq_selected:
+                print("Debug: Fehler bei Eigenfrequenzwahl")
+
+            eigen_freq_selected_freq = eigen_freq_selected['eigenfreq']
+            solution_nodes = eigen_freq_selected['solution']
+            solution_nodes_trans = self.transform_solution(solution_nodes)
+
+            # update text
+            self.selected_eigen_freq.set(eigen_freq_selected_freq)
+            # update graphiocs
+            all_canvas_elements = self.canvas_solution.find_all()
+            for elem in all_canvas_elements:
+                self.canvas_solution.delete(elem)
+            self.add_canvas_solution_static_elements()
+            self.draw_solution(solution_nodes_trans)
+
+        def button_save_input():
+            ...
+
+        def button_save_output():
+            ...
 
         # creates FEM Solution window
         fem_solution_window = tk.Toplevel(self)
@@ -169,8 +260,11 @@ class WindForceGUI(tk.Tk):
         fem_solution_window.geometry(f"{600}x{600}")
 
         # graphical output
-        canvas_solution = tk.Canvas(fem_solution_window, width=400, height=550, bg="gray")
-        canvas_solution.place(relx=200/600-0.025, rely=(1-(550/600))/2)
+        self.canvas_sol_w =  400
+        self.canvas_sol_h = 550
+        self.canvas_solution = tk.Canvas(fem_solution_window, width=self.canvas_sol_w, height=self.canvas_sol_h, bg="gray")
+        self.canvas_solution.place(relx=200/600-0.025, rely=(1-(550/600))/2)
+        self.add_canvas_solution_static_elements()
 
         # Selector for eigenfrequency
         solution_eigen_freq_label = tk.Label(fem_solution_window, text="Select Eigenfrequency", font=WindForceGUI.STANDARD_FONT_1)
@@ -182,14 +276,24 @@ class WindForceGUI(tk.Tk):
         dropdown_solution_eigen_freq = tk.OptionMenu(fem_solution_window, solution_eigen_freq_selected,
                                                      *solution_calculated_eigen_freqs)
         dropdown_solution_eigen_freq.place(relx=0.025, rely=0.075)
+        solution_eigen_freq_selected.trace('w', update_solution)
 
         # Show Eigenfrequency
-        selected_eigen_freq = tk.StringVar()
-        selected_eigen_freq.set('None')
-        selected_eigen_freq_label = tk.Entry(fem_solution_window, textvariable=selected_eigen_freq,
-                                                 state='readonly', font=("Arial", 10), width=6)
+        self.selected_eigen_freq = tk.StringVar()
+        self.selected_eigen_freq.set('None')
+        selected_eigen_freq_label = tk.Entry(fem_solution_window, textvariable=self.selected_eigen_freq,
+                                                 state='readonly', font=("Arial", 10), width=15)
         selected_eigen_freq_label.place(relx=0.025, rely=0.135)
 
+        # Button save input
+        button_save_input = tk.Button(fem_solution_window, text="Save Input ", command=button_save_input,
+                                 font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
+        button_save_input.place(relx=0.025, rely=0.8)
+
+        # Button save output
+        button_save_output = tk.Button(fem_solution_window, text="Save Input ", command=button_save_output,
+                                 font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
+        button_save_output.place(relx=0.025, rely=0.85)
 
         if self.solution is not None:
             ...
