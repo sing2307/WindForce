@@ -4,6 +4,7 @@ import tkinter.font as tkFont
 import math
 from tkinter import filedialog
 import numpy as np
+import copy
 
 #################################################
 # Other
@@ -37,37 +38,43 @@ class WindForceGUI(tk.Tk):
         super().__init__()
         self.init_main_window()
         self.solution = None
-        self.input_parameters_init = {'sections': None,
-                                 'springs': {'base_cx': 0,
-                                             'base_cy': 0,
-                                             'base_phix': 0,
-                                             'base_phiy': 0,
-                                             'head_cx': 0},
-                                 'masses': {'base_m': 0,
-                                            'head_m': 0},
-                                 'forces': {'f_excite': 0,
-                                            'f_head': 0,
-                                            'm_head': 0,
-                                            'f_rotor': 0,
-                                            'qu_impulse': 0,
-                                            'qo_impulse': 0,
-                                            'nbr_periods': 0,
-                                            'delta_t': 0,
-                                            'num_1': 0,
-                                            'num_2': 0},
-                                 'excentricity': {'exc_ex': 0,
-                                                  'exc_EA': 0,
-                                                  'exc_EIy': 0,
-                                                  'exc_EIz': 0,
-                                                  'exc_GIt': 0,
-                                                  'exc_mass': 0,
-                                                  'exc_area': 0,
-                                                  'exc_Ip': 0},
-                                 'calculation_param': {'fem_density': 0,
-                                                       'fem_nbr_eigen_freq': 0,
-                                                       'fem_dmas': 0,
-                                                       'fem_exc': 0}}
-        self.input_parameters = self.input_parameters_init
+        self.input_parameters_init = {'sections': {0: {'sec_number': 0,
+                                                       'sec_height': 0,
+                                                       'sec_ra': 0,
+                                                       'sec_thickness': 0,
+                                                       'sec_E': 0,
+                                                       'sec_G': 0,
+                                                       'sec_rho': 0}},
+                                      'springs': {'base_cx': 0,
+                                                  'base_cy': 0,
+                                                  'base_phix': 0,
+                                                  'base_phiy': 0,
+                                                  'head_cx': 0},
+                                      'masses': {'base_m': 0,
+                                                 'head_m': 0},
+                                      'forces': {'f_excite': 0,
+                                                 'f_head': 0,
+                                                 'm_head': 0,
+                                                 'f_rotor': 0,
+                                                 'qu_impulse': 0,
+                                                 'qo_impulse': 0,
+                                                 'nbr_periods': 0,
+                                                 'delta_t': 0,
+                                                 'num_1': 0,
+                                                 'num_2': 0},
+                                      'excentricity': {'exc_ex': 0,
+                                                       'exc_EA': 0,
+                                                       'exc_EIy': 0,
+                                                       'exc_EIz': 0,
+                                                       'exc_GIt': 0,
+                                                       'exc_mass': 0,
+                                                       'exc_area': 0,
+                                                       'exc_Ip': 0},
+                                      'calculation_param': {'fem_density': 0,
+                                                            'fem_nbr_eigen_freq': 0,
+                                                            'fem_dmas': 0,
+                                                            'fem_exc': 0}}
+        self.input_parameters = copy.deepcopy(self.input_parameters_init)
 
     def init_main_window(self):
         """
@@ -173,7 +180,10 @@ class WindForceGUI(tk.Tk):
         updates the sytem information in lower part of main window
         :return:
         """
-        new_string = str(self.input_parameters) # todo
+        if self.input_parameters:
+            new_string = str(self.input_parameters)  # todo
+        else:
+            new_string = f"Enter system parameters first. Values not set manually will be set to 0."
         self.current_system_information.config(state='normal')
         self.current_system_information.delete("1.0", tk.END)
         self.current_system_information.insert(tk.END, new_string)
@@ -216,7 +226,6 @@ class WindForceGUI(tk.Tk):
             self.input_parameters = eval(content)  # todo: change to json
             self.update_current_system_info()
 
-
     def save_input_file(self):
         file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
@@ -244,49 +253,51 @@ class WindForceGUI(tk.Tk):
                 value = entry_value.get()
                 try:
                     value = float(value)
-                except ValueError: # if user enters string
+                except ValueError:  # if user enters string
                     self.value_vars[nvalue].set('0')
                     value = 0
                 self.input_parameters[input_type][value_type] = value
                 nvalue += 1
-            self.update_current_system_info() # todo
+            self.update_current_system_info()  # todo
 
-        # label_dict to replace dict entry with text for entry fields e.g fem_nbr_eigen_freq todo: wording...
-        label_dict ={'base_cx': 'base_cx',
-                     'base_cy': 'base_cy',
-                     'base_phix': 'base_phix',
-                     'base_phiy': 'base_phiy',
-                     'head_cx': 'head_cx',
-                     'base_m': 'base_m',
-                     'head_m': 'head_m',
-                     'freq_excite': 'freq_excite',
-                     'f_head': 'f_head',
-                     'm_head': 'm_head',
-                     'freq_rotor': 'freq_rotor',
-                     'qu_impulse': 'qu_impulse',
-                     'qo_impulse': 'qo_impulse',
-                     'nbr_periods': 'nbr_periods',
-                     'delta_t': 'delta_t',
-                     'num_1': 'num_1',
-                     'num_2': 'num_2',
-                     'exc_ex': 'exc_ex',
-                     'exc_EA': 'exc_EA',
-                     'exc_EIy': 'exc_EIy',
-                     'exc_EIz': 'exc_EIz',
-                     'exc_GIt': 'exc_GIt',
-                     'exc_mass_unit': 'exc_mass_unit',
-                     'exc_area': 'exc_area',
-                     'exc_Ip': 'exc_Ip',
-                     'fem_density': 'fem_density',
-                     'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
-                     'fem_dmas': 'fem_dmas',
-                     'fem_exc': 'fem_exc'}
+        # label_dict to replace dict entry with text for entry fields, key to value,e.g fem_nbr_eigen_freq
+        # todo: wording...
+        label_dict = {'base_cx': 'base_cx',
+                      'base_cy': 'base_cy',
+                      'base_phix': 'base_phix',
+                      'base_phiy': 'base_phiy',
+                      'head_cx': 'head_cx',
+                      'base_m': 'base_m',
+                      'head_m': 'head_m',
+                      'freq_excite': 'freq_excite',
+                      'f_head': 'f_head',
+                      'm_head': 'm_head',
+                      'freq_rotor': 'freq_rotor',
+                      'qu_impulse': 'qu_impulse',
+                      'qo_impulse': 'qo_impulse',
+                      'nbr_periods': 'nbr_periods',
+                      'delta_t': 'delta_t',
+                      'num_1': 'num_1',
+                      'num_2': 'num_2',
+                      'exc_ex': 'exc_ex',
+                      'exc_EA': 'exc_EA',
+                      'exc_EIy': 'exc_EIy',
+                      'exc_EIz': 'exc_EIz',
+                      'exc_GIt': 'exc_GIt',
+                      'exc_mass_unit': 'exc_mass_unit',
+                      'exc_area': 'exc_area',
+                      'exc_Ip': 'exc_Ip',
+                      'fem_density': 'fem_density',
+                      'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
+                      'fem_dmas': 'fem_dmas',
+                      'fem_exc': 'fem_exc'}
 
-        window_size_y = len(input_value_list) * 55 if len(input_value_list) > 3 else (len(input_value_list) + 1) * 55
+        window_size_y = len(input_value_list) * 55 if len(input_value_list) > 2 else (len(input_value_list) + 1) * 55
 
         input_window = tk.Toplevel(self)
         input_window.title(input_type)
         input_window.geometry(f"{350}x{window_size_y}")
+        input_window.resizable(False, False)
         standard_font_1_bold = tkFont.Font(family="Arial", size=12, weight='bold')
 
         value_type_dict = {'springs': ['Enter Springs Parameters'],
@@ -323,10 +334,177 @@ class WindForceGUI(tk.Tk):
         set_entry_button.place(relx=0.05, rely=rely)
 
     def clear_all(self):
-        pass
+        self.input_parameters = copy.deepcopy(self.input_parameters_init) 
+        all_canvas_elements = self.canvas.find_all()
+        for elem in all_canvas_elements:
+            self.canvas.delete(elem)
+        self.add_canvas_static_elements()
+        self.update_current_system_info()
+
+    def update_canvas(self):
+
+        section_keys = sorted(list(self.input_parameters['sections'].keys()))
+        section_nodes_len = len(section_keys)
+
+        nodes = list()
+        curr_y = 0
+        for node in section_keys:
+            nbr = self.input_parameters['sections'][node]['sec_number']
+            length = self.input_parameters['sections'][node]['sec_height']
+            nodes.append([curr_y, curr_y +  length])
+            curr_y += length
+
+        # coord transform
+        max_y = max([node[1] for node in nodes])
+        factor = WindForceGUI.CANVAS_MAIN_HEIGHT/max_y * 3/4
+        nodes = [[math.floor(WindForceGUI.CANVAS_MAIN_HEIGHT - node[0] * factor),
+                  math.floor(WindForceGUI.CANVAS_MAIN_HEIGHT - node[1] * factor)] for node in nodes]
+
+        # draw node and lines
+        all_canvas_elements = self.canvas.find_all()
+        for elem in all_canvas_elements:
+            self.canvas.delete(elem)
+        self.add_canvas_static_elements()
+
+        for node in nodes:
+            self.canvas.create_line(WindForceGUI.CANVAS_MAIN_WIDTH/2, node[0],
+                                    WindForceGUI.CANVAS_MAIN_WIDTH/2, node[1], fill='dark blue', width=8)
+            self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH/2 - 7, node[1] - 7,
+                                    WindForceGUI.CANVAS_MAIN_WIDTH/2 + 7, node[1] + 7, outline="black",
+                                    fill="dark blue")
+
+        # base
+        self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH / 2 - 15, WindForceGUI.CANVAS_MAIN_HEIGHT - 15,
+                                WindForceGUI.CANVAS_MAIN_WIDTH / 2 + 15, WindForceGUI.CANVAS_MAIN_HEIGHT + 15,
+                                outline="black", fill="black")
+
+        # head
+        self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH / 2 - 50, nodes[-1][1] - 10,
+                                WindForceGUI.CANVAS_MAIN_WIDTH / 2, nodes[-1][1] + 10,
+                                outline="black", fill="gray")
+        self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH / 2, nodes[-1][1] - 10,
+                                WindForceGUI.CANVAS_MAIN_WIDTH / 2 + 50, nodes[-1][1] + 10,
+                                outline="black", fill="gray")
+
 
     def enter_sections(self):
-        pass
+
+        def add_section():
+            """
+            adds sections to input_parameters and graphical output
+            :return:
+            """
+            section_value_nbr = self.section_value_nbr.get()
+            section_value_height = self.section_value_height.get()
+            section_value_ra = self.section_value_ra.get()
+            section_value_thick = self.section_value_thick.get()
+            section_value_emod = self.section_value_emod.get()
+            section_value_gmod = self.section_value_gmod.get()
+            section_value_rho = self.section_value_rho.get()
+
+            try:
+                section_value_nbr = int(section_value_nbr)
+            except ValueError:
+                self.section_value_nbr.set(0)  # todo: fehlermeldung!
+                section_value_nbr = 0
+
+            section = {'sec_number': int(section_value_nbr),
+                       'sec_height': float(section_value_height),
+                       'sec_ra': float(section_value_ra),
+                       'sec_thickness': float(section_value_thick),
+                       'sec_E': float(section_value_emod),
+                       'sec_G': float(section_value_gmod),
+                       'sec_rho': float(section_value_rho)}
+            self.input_parameters['sections'][int(section_value_nbr)] = section
+            self.update_canvas()
+            self.update_current_system_info()
+
+
+        input_sections_window = tk.Toplevel(self)
+        input_sections_window.title('Input Section Information')
+        input_sections_window.geometry(f"{350}x{400}")
+        input_sections_window.resizable(False, False)
+        standard_font_1_bold = tkFont.Font(family="Arial", size=12, weight='bold')
+
+        sections_label = tk.Label(input_sections_window, text='Enter Section Parameter', font=standard_font_1_bold)
+        sections_label.place(relx=0.05, rely=0.05)
+
+        rely_plus = 0.075
+        rely = 0.15
+        # sec_number
+        section_label_nbr = tk.Label(input_sections_window, text='sec_number', font=("Arial", 12))
+        section_label_nbr.place(relx=0.05, rely=rely)
+        self.section_value_nbr = tk.StringVar()
+        self.section_value_nbr.set('0')
+        self.section_entry_nbr = tk.Entry(input_sections_window, textvariable=self.section_value_nbr,
+                                          font=("Arial", 10), width=15)
+        self.section_entry_nbr.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_height
+        section_label_height = tk.Label(input_sections_window, text='sec_height', font=("Arial", 12))
+        section_label_height.place(relx=0.05, rely=rely)
+        self.section_value_height = tk.StringVar()
+        self.section_value_height.set('0')
+        self.section_entry_height = tk.Entry(input_sections_window, textvariable=self.section_value_height,
+                                             font=("Arial", 10), width=15)
+        self.section_entry_height.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_ra
+        section_label_ra = tk.Label(input_sections_window, text='sec_ra', font=("Arial", 12))
+        section_label_ra.place(relx=0.05, rely=rely)
+        self.section_value_ra = tk.StringVar()
+        self.section_value_ra.set('0')
+        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra, font=("Arial", 10),
+                                         width=15)
+        self.section_entry_ra.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_thickness
+        section_label_thick = tk.Label(input_sections_window, text='sec_thickness', font=("Arial", 12))
+        section_label_thick.place(relx=0.05, rely=rely)
+        self.section_value_thick = tk.StringVar()
+        self.section_value_thick.set('0')
+        self.section_entry_thick = tk.Entry(input_sections_window, textvariable=self.section_value_thick,
+                                            font=("Arial", 10), width=15)
+        self.section_entry_thick.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_E
+        section_label_emod = tk.Label(input_sections_window, text='sec_E', font=("Arial", 12))
+        section_label_emod.place(relx=0.05, rely=rely)
+        self.section_value_emod = tk.StringVar()
+        self.section_value_emod.set('0')
+        self.section_entry_emod = tk.Entry(input_sections_window, textvariable=self.section_value_emod,
+                                           font=("Arial", 10), width=15)
+        self.section_entry_emod.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_G
+        section_label_gmod = tk.Label(input_sections_window, text='sec_G', font=("Arial", 12))
+        section_label_gmod.place(relx=0.05, rely=rely)
+        self.section_value_gmod = tk.StringVar()
+        self.section_value_gmod.set('0')
+        self.section_entry_gmod = tk.Entry(input_sections_window, textvariable=self.section_value_gmod,
+                                           font=("Arial", 10), width=15)
+        self.section_entry_gmod.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_rho
+        section_label_rho = tk.Label(input_sections_window, text='rho', font=("Arial", 12))
+        section_label_rho.place(relx=0.05, rely=rely)
+        self.section_value_rho = tk.StringVar()
+        self.section_value_rho.set('0')
+        self.section_entry_rho = tk.Entry(input_sections_window, textvariable=self.section_value_rho,
+                                          font=("Arial", 10), width=15)
+        self.section_entry_rho.place(relx=0.4, rely=rely)
+
+        rely += (rely_plus + 0.05)
+        # button add section
+        set_entry_button = tk.Button(input_sections_window, text="Add Section", command=add_section,
+                                     font=WindForceGUI.STANDARD_FONT_BUTTON, width=18, height=1)
+        set_entry_button.place(relx=0.05, rely=rely)
 
     def enter_springs(self):
         self.input_window_boiler('springs', 'base_cx', 'base_cy', 'base_phix', 'base_phiy', 'head_cx')
