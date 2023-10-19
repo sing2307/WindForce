@@ -5,6 +5,7 @@ import math
 from tkinter import filedialog
 import numpy as np
 import copy
+import json
 
 #################################################
 # Other
@@ -28,7 +29,7 @@ class WindForceGUI(tk.Tk):
     CANVAS_MAIN_WIDTH = 300
     CANVAS_MAIN_HEIGHT = 330
     STANDARD_FONT_1 = ('Arial', 12)
-    STANDARD_FONT_2 = ('Arial', 8)
+    STANDARD_FONT_2 = ('Arial', 7)
     STANDARD_FONT_BUTTON = ('Arial', 10)
 
     def __init__(self):
@@ -38,7 +39,7 @@ class WindForceGUI(tk.Tk):
         super().__init__()
         self.init_main_window()
         self.solution = None
-        self.input_parameters_init = {'sections': {0: {'sec_number': 0,
+        self.input_parameters_init = {'sections': {'0': {'sec_number': 0,
                                                        'sec_height': 0,
                                                        'sec_ra': 0,
                                                        'sec_thickness': 0,
@@ -74,6 +75,44 @@ class WindForceGUI(tk.Tk):
                                                             'fem_nbr_eigen_freq': 0,
                                                             'fem_dmas': 0,
                                                             'fem_exc': 0}}
+        # label_dict to replace dict entry with text for entry fields, key to value,e.g fem_nbr_eigen_freq
+        # todo: wording...
+        self.label_dict = {'sec_number': 'sec_number',
+                      'sec_height': 'sec_height',
+                      'sec_ra': 'sec_ra',
+                      'sec_thickness': 'sec_thickness',
+                      'sec_E': 'sec_E',
+                      'sec_G': 'sec_G',
+                      'sec_rho': 'sec_rho',
+                      'base_cx': 'base_cx',
+                      'base_cy': 'base_cy',
+                      'base_phix': 'base_phix',
+                      'base_phiy': 'base_phiy',
+                      'head_cx': 'head_cx',
+                      'base_m': 'base_m',
+                      'head_m': 'head_m',
+                      'f_excite': 'f_excite',
+                      'f_head': 'f_head',
+                      'm_head': 'm_head',
+                      'f_rotor': 'f_rotor',
+                      'qu_impulse': 'qu_impulse',
+                      'qo_impulse': 'qo_impulse',
+                      'nbr_periods': 'nbr_periods',
+                      'delta_t': 'delta_t',
+                      'num_1': 'num_1',
+                      'num_2': 'num_2',
+                      'exc_ex': 'exc_ex',
+                      'exc_EA': 'exc_EA',
+                      'exc_EIy': 'exc_EIy',
+                      'exc_EIz': 'exc_EIz',
+                      'exc_GIt': 'exc_GIt',
+                      'exc_mass': 'exc_mass',
+                      'exc_area': 'exc_area',
+                      'exc_Ip': 'exc_Ip',
+                      'fem_density': 'fem_density',
+                      'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
+                      'fem_dmas': 'fem_dmas',
+                      'fem_exc': 'fem_exc'}
         self.input_parameters = copy.deepcopy(self.input_parameters_init)
 
     def init_main_window(self):
@@ -169,11 +208,38 @@ class WindForceGUI(tk.Tk):
         current_system_information_label = tk.Label(root, text="System Information:", font=standard_font_1_bold)
         current_system_information_label.place(relx=0.025, rely=0.7)
         self.initial_system_information = f"Enter system parameters first. Values not set manually will be set to 0."
-        self.current_system_information = tk.Text(self, height=8, width=140, wrap=tk.WORD,
+        self.current_system_information = tk.Text(self, height=11, width=170, wrap=tk.WORD,
                                                   font=WindForceGUI.STANDARD_FONT_2, bg='light gray', fg='black')
         self.current_system_information.place(relx=0.025, rely=0.75)
         self.current_system_information.insert(tk.END, self.initial_system_information)
         self.current_system_information.config(state='disabled')
+
+    def format_system_information(self):
+        """
+        formats the system information for displaying in main window
+        :return:
+        """
+
+        format_string = ''
+        for key, values in self.input_parameters.items():
+            if key == 'sections':
+                continue
+            add_str = f"{key.upper()}: "
+            format_string += add_str
+            for key_, value_ in values.items():
+                format_string += f"{self.label_dict[key_]}={value_}  "
+            format_string += '\n'
+        format_string += 'SECTIONS: '
+        for values in self.input_parameters['sections'].values():
+            format_string += f"Sec {str(values['sec_number'])}: -> ["
+            for key, value in values.items():
+                if key == 'sec_number':
+                    continue
+                format_string += f"{self.label_dict[key]}={value} | "
+            format_string += f'] '
+
+        return format_string
+
 
     def update_current_system_info(self):
         """
@@ -181,7 +247,7 @@ class WindForceGUI(tk.Tk):
         :return:
         """
         if self.input_parameters:
-            new_string = str(self.input_parameters)  # todo
+            new_string = self.format_system_information()
         else:
             new_string = f"Enter system parameters first. Values not set manually will be set to 0."
         self.current_system_information.config(state='normal')
@@ -217,24 +283,26 @@ class WindForceGUI(tk.Tk):
 
     def open_input_file(self):
         file_path = filedialog.askopenfilename(
-            filetypes=[("Text Files", "*.txt")],
+            filetypes=[("json Files", "*.json")],
             title="Open Input File",
         )
         if file_path:
             with open(file_path, "r") as file:
                 content = file.read()
-            self.input_parameters = eval(content)  # todo: change to json
+            self.input_parameters = json.loads(content)
             self.update_current_system_info()
+            self.update_canvas()
 
     def save_input_file(self):
+        print(self.input_parameters)
         file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+            filetypes=[("json Files", "*.json")],
             title="Save Input As",
         )
         if file_path:
             with open(file_path, "w") as file:
-                file.write(str(self.input_parameters))  # todo: change to json
+                file.write(json.dumps(self.input_parameters))
 
     def input_window_boiler(self, input_type: str, *input_value_list):
         """
@@ -258,39 +326,7 @@ class WindForceGUI(tk.Tk):
                     value = 0
                 self.input_parameters[input_type][value_type] = value
                 nvalue += 1
-            self.update_current_system_info()  # todo
-
-        # label_dict to replace dict entry with text for entry fields, key to value,e.g fem_nbr_eigen_freq
-        # todo: wording...
-        label_dict = {'base_cx': 'base_cx',
-                      'base_cy': 'base_cy',
-                      'base_phix': 'base_phix',
-                      'base_phiy': 'base_phiy',
-                      'head_cx': 'head_cx',
-                      'base_m': 'base_m',
-                      'head_m': 'head_m',
-                      'freq_excite': 'freq_excite',
-                      'f_head': 'f_head',
-                      'm_head': 'm_head',
-                      'freq_rotor': 'freq_rotor',
-                      'qu_impulse': 'qu_impulse',
-                      'qo_impulse': 'qo_impulse',
-                      'nbr_periods': 'nbr_periods',
-                      'delta_t': 'delta_t',
-                      'num_1': 'num_1',
-                      'num_2': 'num_2',
-                      'exc_ex': 'exc_ex',
-                      'exc_EA': 'exc_EA',
-                      'exc_EIy': 'exc_EIy',
-                      'exc_EIz': 'exc_EIz',
-                      'exc_GIt': 'exc_GIt',
-                      'exc_mass_unit': 'exc_mass_unit',
-                      'exc_area': 'exc_area',
-                      'exc_Ip': 'exc_Ip',
-                      'fem_density': 'fem_density',
-                      'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
-                      'fem_dmas': 'fem_dmas',
-                      'fem_exc': 'fem_exc'}
+            self.update_current_system_info()
 
         window_size_y = len(input_value_list) * 55 if len(input_value_list) > 2 else (len(input_value_list) + 1) * 55
 
@@ -316,7 +352,7 @@ class WindForceGUI(tk.Tk):
         self.value_vars = list()
         for n_value, button_text in enumerate(input_value_list):
             # label
-            entry_label = tk.Label(input_window, text=label_dict[button_text], font=("Arial", 12))
+            entry_label = tk.Label(input_window, text=self.label_dict[button_text], font=("Arial", 12))
             entry_label.place(relx=0.05, rely=rely)
 
             # entry field
@@ -334,7 +370,7 @@ class WindForceGUI(tk.Tk):
         set_entry_button.place(relx=0.05, rely=rely)
 
     def clear_all(self):
-        self.input_parameters = copy.deepcopy(self.input_parameters_init) 
+        self.input_parameters = copy.deepcopy(self.input_parameters_init)
         all_canvas_elements = self.canvas.find_all()
         for elem in all_canvas_elements:
             self.canvas.delete(elem)
@@ -344,7 +380,6 @@ class WindForceGUI(tk.Tk):
     def update_canvas(self):
 
         section_keys = sorted(list(self.input_parameters['sections'].keys()))
-        section_nodes_len = len(section_keys)
 
         nodes = list()
         curr_y = 0
@@ -356,7 +391,10 @@ class WindForceGUI(tk.Tk):
 
         # coord transform
         max_y = max([node[1] for node in nodes])
-        factor = WindForceGUI.CANVAS_MAIN_HEIGHT/max_y * 3/4
+        try:
+            factor = WindForceGUI.CANVAS_MAIN_HEIGHT/max_y * 3/4
+        except ZeroDivisionError:
+            factor = WindForceGUI.CANVAS_MAIN_HEIGHT / 0.0001 * 3 / 4
         nodes = [[math.floor(WindForceGUI.CANVAS_MAIN_HEIGHT - node[0] * factor),
                   math.floor(WindForceGUI.CANVAS_MAIN_HEIGHT - node[1] * factor)] for node in nodes]
 
@@ -403,9 +441,9 @@ class WindForceGUI(tk.Tk):
             section_value_rho = self.section_value_rho.get()
 
             try:
-                section_value_nbr = int(section_value_nbr)
+                section_value_nbr = int(section_value_nbr) # if float or text
             except ValueError:
-                self.section_value_nbr.set(0)  # todo: fehlermeldung!
+                self.section_value_nbr.set('0')
                 section_value_nbr = 0
 
             section = {'sec_number': int(section_value_nbr),
@@ -415,7 +453,7 @@ class WindForceGUI(tk.Tk):
                        'sec_E': float(section_value_emod),
                        'sec_G': float(section_value_gmod),
                        'sec_rho': float(section_value_rho)}
-            self.input_parameters['sections'][int(section_value_nbr)] = section
+            self.input_parameters['sections'][str(section_value_nbr)] = section  # str since json needs str keys
             self.update_canvas()
             self.update_current_system_info()
 
@@ -513,11 +551,11 @@ class WindForceGUI(tk.Tk):
         self.input_window_boiler('masses', 'base_m', 'head_m')
 
     def enter_forces(self):
-        self.input_window_boiler('forces', 'freq_excite', 'f_head', 'freq_rotor', 'qu_impulse',
+        self.input_window_boiler('forces', 'f_excite', 'f_head', 'f_rotor', 'qu_impulse',
                                  'qo_impulse', 'nbr_periods', 'delta_t', 'num_1', 'num_2')
 
     def enter_excentricity(self):
-        self.input_window_boiler('excentricity', 'exc_ex', 'exc_EA', 'exc_EIy', 'exc_EIz', 'exc_GIt', 'exc_mass_unit',
+        self.input_window_boiler('excentricity', 'exc_ex', 'exc_EA', 'exc_EIy', 'exc_EIz', 'exc_GIt', 'exc_mass',
                                  'exc_area', 'exc_Ip')
 
     def enter_calc_params(self):
