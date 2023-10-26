@@ -115,7 +115,7 @@ class Calculation(ABCCalculation):
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
         eigenfrequencies, eigenvector = self.solve_system()
-        print(f'The first {len(eigenfrequencies)} eigenfrequencies are:')
+        print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
         print(eigenfrequencies)
 
         # self.return_solution()
