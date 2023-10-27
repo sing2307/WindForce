@@ -5,6 +5,7 @@ from scipy.linalg import eigh
 import numpy as np
 import math
 
+
 class Calculation(ABCCalculation):
     """
     Concrete class for calculation
@@ -70,11 +71,10 @@ class Calculation(ABCCalculation):
 
         # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
         # TODO: Bad workaround to delete rows and columns of csr matrix. Maybe implement function from https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices ?
-        k_glob = np.delete(np.delete(k_glob.toarray(), range(6),0), range(6),1)
-        m_glob = np.delete(np.delete(m_glob.toarray(), range(6), 0), range(6), 1)
+        k_glob = np.delete(np.delete(k_glob.toarray(), range(6), 0), range(6), 1)
+        m_glob = np.delete(np.delete(m_glob.toarray(), range(6), 0), range(6),  1)
         # Return global stiffness and mass matrix
         return k_glob, m_glob
-
 
     def solve_system(self):
         """
@@ -85,7 +85,6 @@ class Calculation(ABCCalculation):
         [eigenvalues_sq, eigenvector] = eigh(self.k_glob, self.m_glob, subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq']-1])
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
-
 
     def start_calc(self):
         min_height = min(section['sec_height'] for section in self.sections.values())
@@ -121,7 +120,7 @@ class Calculation(ABCCalculation):
         # self.return_solution()
 
 
-class Elements():
+class Elements:
     """
     Computation of system matrices and solution
     """
@@ -137,6 +136,7 @@ class Elements():
         self.element_e = section_e
         self.element_g = section_g
         self.element_rho = section_rho
+
     def calc_element_matrix(self):
         """
         Calculates element stiffness and mass matrix
