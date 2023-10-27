@@ -22,6 +22,8 @@ class Calculation(ABCCalculation):
         self.element_matrices = []
         self.k_glob = []
         self.m_glob = []
+        self.nodes = np.array([0])
+        self.solution = {}
 
     def return_solution(self):
         """
@@ -70,9 +72,11 @@ class Calculation(ABCCalculation):
         # Assemble discrete masses and springs (TODO...)
 
         # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
-        # TODO: Bad workaround to delete rows and columns of csr matrix. Maybe implement function from https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices ?
+        # TODO: Bad workaround to delete rows and columns of csr matrix.
+        #  Maybe implement function from
+        #  https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices ?
         k_glob = np.delete(np.delete(k_glob.toarray(), range(6), 0), range(6), 1)
-        m_glob = np.delete(np.delete(m_glob.toarray(), range(6), 0), range(6),  1)
+        m_glob = np.delete(np.delete(m_glob.toarray(), range(6), 0), range(6), 1)
         # Return global stiffness and mass matrix
         return k_glob, m_glob
 
@@ -82,7 +86,8 @@ class Calculation(ABCCalculation):
         :return:
         """
         # Solve the generalized eigenvalue problem
-        [eigenvalues_sq, eigenvector] = eigh(self.k_glob, self.m_glob, subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq']-1])
+        [eigenvalues_sq, eigenvector] = eigh(self.k_glob, self.m_glob,
+                                             subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq'] - 1])
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
 
@@ -96,27 +101,73 @@ class Calculation(ABCCalculation):
             self.number_of_elements.append((self.calculation_param['fem_density'] * round(section_height / min_height)))
             num_elements = self.number_of_elements[sefc_id]
             element_length = section_height / num_elements
+            max_nodes = max(self.nodes)
+            self.nodes = np.append(self.nodes, np.arange(element_length, section_height + element_length,
+                                                         element_length) + max_nodes)
             section_t = section_values['sec_thickness']
             section_ra_bot = section_values['sec_ra_bot']
             section_ra_top = section_values['sec_ra_top']
-            element_ra_mid = section_ra_bot - (section_ra_bot - section_ra_top) / section_height * element_length * (np.arange(1, num_elements+1) - 0.5)
+            element_ra_mid = section_ra_bot - (section_ra_bot - section_ra_top) / section_height * element_length * (
+                    np.arange(1, num_elements + 1) - 0.5)
             section_e = section_values['sec_E']
             section_g = section_values['sec_G']
             section_rho = section_values['sec_rho']
-            # Calcualte the element stiffness, mass matrix and the connectivity for each element. TODO: Implement excentricity
+            # Calculate the element stiffness, mass matrix and the connectivity for each section element.
+            # units: [N], [m] , [kg]
             for index in range(len(element_ra_mid)):
-                element_k_matrix, element_m_matrix = Elements(element_length, section_t, element_ra_mid[index],  section_e, section_g, section_rho).calc_element_matrix()
+                element_ri_mid = element_ra_mid[index] - section_t * 10 ** (-2)
+                ele_a = math.pi * (element_ra_mid[index] ** 2 - element_ri_mid ** 2)
+                ele_iy = (math.pi / 4) * (element_ra_mid[index] ** 4 - element_ri_mid ** 4)  # Iy = Iz
+                ele_it = (math.pi / 2) * (element_ra_mid[index] ** 4 - element_ri_mid ** 4)
+                ele_ip = 2 * ele_iy
+                ea = section_e * ele_a * 10 ** 6
+                ei_y = section_e * ele_iy * 10 ** 6
+                ei_z = section_e * ele_iy * 10 ** 6
+                gi_t = section_g * ele_it * 10 ** 6
+                m = ele_a * section_rho
+                element_k_matrix, element_m_matrix = Elements(element_length, ele_a, ea, ei_y, ei_z, gi_t, ele_ip, m,
+                                                              'vertical').calc_element_matrix()
                 dofs = dofs + 6
                 self.element_matrices.append({'DOFs': dofs, 'K': element_k_matrix, 'M': element_m_matrix})
+        # Calculate node matrix "node_seg_ele" containing the nodes of each element of the sections.
+        nodes_seg_ele = np.column_stack((np.zeros(self.nodes.size), self.nodes, np.zeros(self.nodes.size)))
+        # Calculate the element stiffness, mass matrix and the connectivity for each excentricity element.
+        # element_length_exc is the element length of the excentricity.
+        # The discretization [elements/m] equals the discretization of the shortest segment.
+        l_exc = self.excentricity['exc_ex']
+        if l_exc > 0:
+            num_elements_exc = max(round(self.calculation_param['fem_density'] * l_exc / min_height), 1)
+            element_length_exc = l_exc / num_elements_exc
+            exc_k_matrix, exc_element_m_matrix = Elements(element_length_exc, self.excentricity['exc_area'],
+                                                          self.excentricity['exc_EA'], self.excentricity['exc_EIy'],
+                                                          self.excentricity['exc_EIz'],
+                                                          self.excentricity['exc_GIt'], self.excentricity['exc_Ip'],
+                                                          self.excentricity['exc_mass'],
+                                                          'horizontal').calc_element_matrix()
+            for index in range(num_elements_exc):
+                dofs = dofs + 6
+                self.element_matrices.append({'DOFs': dofs, 'K': exc_k_matrix, 'M': exc_element_m_matrix})
+            # Construct node matrix "nodes_exc".
+            nodes_exc = np.arange(0, l_exc + element_length_exc, element_length_exc)
+            nodes_exc = np.column_stack(
+                (nodes_exc, np.ones(nodes_exc.size) * np.max(nodes_seg_ele), np.zeros(nodes_exc.size)))
+            self.nodes = np.append(nodes_seg_ele, nodes_exc[1:, :], axis=0)
+        else:
+            self.nodes = nodes_seg_ele
 
         # Assemble global matrices
         self.k_glob, self.m_glob = self.assembly_system_matrix()
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
-        eigenfrequencies, eigenvector = self.solve_system()
+        eigenfrequencies, eigenvectors = self.solve_system()
         print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
         print(eigenfrequencies)
-
+        # Save solution
+        for freq_number, (eigenfreq, solution) in enumerate(zip(eigenfrequencies, eigenvectors)):
+            self.solution[freq_number] = {
+                'eigenfreq': eigenfreq,
+                'solution': solution
+            }
         # self.return_solution()
 
 
@@ -125,17 +176,20 @@ class Elements:
     Computation of system matrices and solution
     """
 
-    def __init__(self, element_length, section_t, element_ra_mid,  section_e, section_g, section_rho):
+    def __init__(self, element_length, ele_a, ea, ei_y, ei_z, gi_t, ele_ip, m, orientation):
         """
         ...
         :param element_parameters:
         """
-        self.element_length = element_length
-        self.element_t = section_t
-        self.element_ra_mid = element_ra_mid
-        self.element_e = section_e
-        self.element_g = section_g
-        self.element_rho = section_rho
+        self.len = element_length
+        self.ele_a = ele_a
+        self.ea = ea
+        self.ei_y = ei_y
+        self.ei_z = ei_z
+        self.gi_t = gi_t
+        self.ele_ip = ele_ip
+        self.m = m
+        self.orientation = orientation
 
     def calc_element_matrix(self):
         """
@@ -143,27 +197,30 @@ class Elements:
         :return:
         """
         # units: [N], [m] , [kg]
-        element_ri_mid = self.element_ra_mid - self.element_t * 10 ** (-2)
-        ele_a = math.pi * (self.element_ra_mid ** 2 - element_ri_mid ** 2)
-        ele_iy = (math.pi / 4) * (self.element_ra_mid ** 4 - element_ri_mid ** 4)   # Iy = Iz
-        ele_it = (math.pi / 2) * (self.element_ra_mid ** 4 - element_ri_mid ** 4)
-        ele_ip = 2 * ele_iy
-        ea = self.element_e * ele_a * 10 ** 6
-        ei_y = self.element_e * ele_iy * 10 ** 6
-        ei_z = self.element_e * ele_iy * 10 ** 6
-        gi_t = self.element_g * ele_it * 10 ** 6
-        l = self.element_length
-        m = ele_a * self.element_rho
+        # For conciseness of matrices:
+        l = self.len
+        ele_a = self.ele_a
+        ea = self.ea
+        ei_y = self.ei_y
+        ei_z = self.ei_z
+        gi_t = self.gi_t
+        ele_ip = self.ele_ip
+        m = self.m
+        # element stiffness and mass matrix:
         k_loc = np.array([
             [ea / l, 0, 0, 0, 0, 0, -ea / l, 0, 0, 0, 0, 0],
-            [0, (12 * ei_z) / (l ** 3), 0, 0, 0, 6 * ei_z / (l ** 2), 0, -12 * ei_z / (l ** 3), 0, 0, 0, 6 * ei_z / (l ** 2)],
-            [0, 0, 12 * ei_y / (l ** 3), 0, -6 * ei_y / (l ** 2), 0, 0, 0, -12 * ei_y / (l ** 3), 0, -6 * ei_y / (l ** 2), 0],
+            [0, (12 * ei_z) / (l ** 3), 0, 0, 0, 6 * ei_z / (l ** 2), 0, -12 * ei_z / (l ** 3), 0, 0, 0,
+             6 * ei_z / (l ** 2)],
+            [0, 0, 12 * ei_y / (l ** 3), 0, -6 * ei_y / (l ** 2), 0, 0, 0, -12 * ei_y / (l ** 3), 0,
+             -6 * ei_y / (l ** 2), 0],
             [0, 0, 0, gi_t / l, 0, 0, 0, 0, 0, -gi_t / l, 0, 0],
             [0, 0, -6 * ei_y / (l ** 2), 0, 4 * ei_y / l, 0, 0, 0, 6 * ei_y / (l ** 2), 0, 2 * ei_y / l, 0],
             [0, 6 * ei_z / (l ** 2), 0, 0, 0, 4 * ei_z / l, 0, -6 * ei_z / (l ** 2), 0, 0, 0, 2 * ei_z / l],
             [-ea / l, 0, 0, 0, 0, 0, ea / l, 0, 0, 0, 0, 0],
-            [0, (-12 * ei_z) / (l ** 3), 0, 0, 0, -6 * ei_z / (l ** 2), 0, 12 * ei_z / (l ** 3), 0, 0, 0, -6 * ei_z / (l ** 2)],
-            [0, 0, -12 * ei_y / (l ** 3), 0, 6 * ei_y / (l ** 2), 0, 0, 0, 12 * ei_y / (l ** 3), 0, 6 * ei_y / (l ** 2), 0],
+            [0, (-12 * ei_z) / (l ** 3), 0, 0, 0, -6 * ei_z / (l ** 2), 0, 12 * ei_z / (l ** 3), 0, 0, 0,
+             -6 * ei_z / (l ** 2)],
+            [0, 0, -12 * ei_y / (l ** 3), 0, 6 * ei_y / (l ** 2), 0, 0, 0, 12 * ei_y / (l ** 3), 0, 6 * ei_y / (l ** 2),
+             0],
             [0, 0, 0, -gi_t / l, 0, 0, 0, 0, 0, gi_t / l, 0, 0],
             [0, 0, -6 * ei_y / (l ** 2), 0, 2 * ei_y / l, 0, 0, 0, 6 * ei_y / (l ** 2), 0, 4 * ei_y / l, 0],
             [0, 6 * ei_z / (l ** 2), 0, 0, 0, 2 * ei_z / l, 0, -6 * ei_z / (l ** 2), 0, 0, 0, 4 * ei_z / l]
@@ -182,6 +239,23 @@ class Elements:
             [0, 0, 13 * l, 0, -3 * l ** 2, 0, 0, 0, 22 * l, 0, 4 * l ** 2, 0],
             [0, -13 * l, 0, 0, 0, -3 * l ** 2, 0, -22 * l, 0, 0, 0, 4 * l ** 2]
         ])
+        transform_vertical = np.array([
+            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        ])
+        if self.orientation == 'vertical':
+            k_loc = transform_vertical @ k_loc @ np.transpose(transform_vertical)
+            m_loc = transform_vertical @ m_loc @ np.transpose(transform_vertical)
         return k_loc, m_loc
 
 
@@ -205,8 +279,15 @@ if __name__ == "__main__":
     springs = {}
     masses = {}
     forces = {}
-    excentricity = {}
-    calculation_param = {'fem_density': 50,
+    excentricity = {'exc_ex': 2,
+                    'exc_EA': 10000000000000,
+                    'exc_EIy': 10000000000000,
+                    'exc_EIz': 10000000000000,
+                    'exc_GIt': 10000000000000,
+                    'exc_mass': 0.02,
+                    'exc_area': 10,
+                    'exc_Ip': 10}
+    calculation_param = {'fem_density': 20,
                          'fem_nbr_eigen_freq': 20,
                          'fem_dmas': 0.05,
                          'fem_exc': 1}
