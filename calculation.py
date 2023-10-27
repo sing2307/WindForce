@@ -1,9 +1,45 @@
 from typing import Dict
 from abccalculation import ABCCalculation
-from scipy.sparse import csr_matrix
-from scipy.linalg import eigh
+from scipy.sparse import csr_array
+from scipy.sparse.linalg import eigsh
 import numpy as np
 import math
+
+
+# Function to delete rows and columns from csr matrix
+# From https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices
+# TODO: Place function in different .py file?
+def delete_from_csr(mat, row_indices=[], col_indices=[]):
+    """
+    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSR sparse matrix ``mat``.
+    WARNING: Indices of altered axes are reset in the returned matrix
+    """
+    if not isinstance(mat, csr_array):
+        raise ValueError("works only for CSR format -- use .tocsr() first")
+
+    rows = []
+    cols = []
+    if row_indices:
+        rows = list(row_indices)
+    if col_indices:
+        cols = list(col_indices)
+
+    if len(rows) > 0 and len(cols) > 0:
+        row_mask = np.ones(mat.shape[0], dtype=bool)
+        row_mask[rows] = False
+        col_mask = np.ones(mat.shape[1], dtype=bool)
+        col_mask[cols] = False
+        return mat[row_mask][:, col_mask]
+    elif len(rows) > 0:
+        mask = np.ones(mat.shape[0], dtype=bool)
+        mask[rows] = False
+        return mat[mask]
+    elif len(cols) > 0:
+        mask = np.ones(mat.shape[1], dtype=bool)
+        mask[cols] = False
+        return mat[:, mask]
+    else:
+        return mat
 
 
 class Calculation(ABCCalculation):
@@ -66,17 +102,15 @@ class Calculation(ABCCalculation):
             num_dofs = max(num_dofs, max_dof_i)
 
         # Create sparse matrices for K and M
-        k_glob = csr_matrix((k_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs))
-        m_glob = csr_matrix((m_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs))
+        k_glob = csr_array((k_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
+        m_glob = csr_array((m_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
 
         # Assemble discrete masses and springs (TODO...)
 
         # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
-        # TODO: Bad workaround to delete rows and columns of csr matrix.
-        #  Maybe implement function from
-        #  https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices ?
-        k_glob = np.delete(np.delete(k_glob.toarray(), range(6), 0), range(6), 1)
-        m_glob = np.delete(np.delete(m_glob.toarray(), range(6), 0), range(6), 1)
+        k_glob = delete_from_csr(k_glob, row_indices=[range(6)], col_indices=[range(6)])
+        m_glob = delete_from_csr(m_glob, row_indices=[range(6)], col_indices=[range(6)])
+
         # Return global stiffness and mass matrix
         return k_glob, m_glob
 
@@ -86,8 +120,8 @@ class Calculation(ABCCalculation):
         :return:
         """
         # Solve the generalized eigenvalue problem
-        [eigenvalues_sq, eigenvector] = eigh(self.k_glob, self.m_glob,
-                                             subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq'] - 1])
+        [eigenvalues_sq, eigenvector] = eigsh(self.k_glob, k=self.calculation_param['fem_nbr_eigen_freq'],
+                                              M=self.m_glob, which='SM')
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
 
@@ -104,26 +138,26 @@ class Calculation(ABCCalculation):
             max_nodes = max(self.nodes)
             self.nodes = np.append(self.nodes, np.arange(element_length, section_height + element_length,
                                                          element_length) + max_nodes)
-            section_t = section_values['sec_thickness']
+            section_t = section_values['sec_thickness'] * 10 ** (-2)  # unit conversion cm -> m
             section_ra_bot = section_values['sec_ra_bot']
             section_ra_top = section_values['sec_ra_top']
             element_ra_mid = section_ra_bot - (section_ra_bot - section_ra_top) / section_height * element_length * (
                     np.arange(1, num_elements + 1) - 0.5)
-            section_e = section_values['sec_E']
-            section_g = section_values['sec_G']
+            section_e = section_values['sec_E'] * 10 ** 6  # unit conversion MPa -> N/mm²
+            section_g = section_values['sec_G'] * 10 ** 6  # unit conversion MPa -> N/mm²
             section_rho = section_values['sec_rho']
             # Calculate the element stiffness, mass matrix and the connectivity for each section element.
             # units: [N], [m] , [kg]
             for index in range(len(element_ra_mid)):
-                element_ri_mid = element_ra_mid[index] - section_t * 10 ** (-2)
+                element_ri_mid = element_ra_mid[index] - section_t
                 ele_a = math.pi * (element_ra_mid[index] ** 2 - element_ri_mid ** 2)
                 ele_iy = (math.pi / 4) * (element_ra_mid[index] ** 4 - element_ri_mid ** 4)  # Iy = Iz
                 ele_it = (math.pi / 2) * (element_ra_mid[index] ** 4 - element_ri_mid ** 4)
                 ele_ip = 2 * ele_iy
-                ea = section_e * ele_a * 10 ** 6
-                ei_y = section_e * ele_iy * 10 ** 6
-                ei_z = section_e * ele_iy * 10 ** 6
-                gi_t = section_g * ele_it * 10 ** 6
+                ea = section_e * ele_a
+                ei_y = section_e * ele_iy
+                ei_z = section_e * ele_iy
+                gi_t = section_g * ele_it
                 m = ele_a * section_rho
                 element_k_matrix, element_m_matrix = Elements(element_length, ele_a, ea, ei_y, ei_z, gi_t, ele_ip, m,
                                                               'vertical').calc_element_matrix()
@@ -162,6 +196,11 @@ class Calculation(ABCCalculation):
         eigenfrequencies, eigenvectors = self.solve_system()
         print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
         print(eigenfrequencies)
+        # Calculate node displacements
+        displacements = np.array(eigenvectors)
+        displacements = np.append(np.zeros((6, len(eigenfrequencies))), displacements, axis=0)
+        # TODO: Delete rotations and add node coordinates
+        # displacements = np.delete
         # Save solution
         for freq_number, (eigenfreq, solution) in enumerate(zip(eigenfrequencies, eigenvectors)):
             self.solution[freq_number] = {
@@ -224,7 +263,7 @@ class Elements:
             [0, 0, 0, -gi_t / l, 0, 0, 0, 0, 0, gi_t / l, 0, 0],
             [0, 0, -6 * ei_y / (l ** 2), 0, 2 * ei_y / l, 0, 0, 0, 6 * ei_y / (l ** 2), 0, 4 * ei_y / l, 0],
             [0, 6 * ei_z / (l ** 2), 0, 0, 0, 2 * ei_z / l, 0, -6 * ei_z / (l ** 2), 0, 0, 0, 4 * ei_z / l]
-        ])
+        ], dtype=np.float64)
         m_loc = (m * l / 420) * np.array([
             [140, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0],
             [0, 156, 0, 0, 0, 22 * l, 0, 54, 0, 0, 0, -13 * l],
@@ -238,7 +277,7 @@ class Elements:
             [0, 0, 0, 70 * ele_ip / ele_a, 0, 0, 0, 0, 0, 140 * ele_ip / ele_a, 0, 0],
             [0, 0, 13 * l, 0, -3 * l ** 2, 0, 0, 0, 22 * l, 0, 4 * l ** 2, 0],
             [0, -13 * l, 0, 0, 0, -3 * l ** 2, 0, -22 * l, 0, 0, 0, 4 * l ** 2]
-        ])
+        ], dtype=np.float64)
         transform_vertical = np.array([
             [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -252,7 +291,7 @@ class Elements:
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-        ])
+        ], dtype=np.float64)
         if self.orientation == 'vertical':
             k_loc = transform_vertical @ k_loc @ np.transpose(transform_vertical)
             m_loc = transform_vertical @ m_loc @ np.transpose(transform_vertical)
@@ -279,15 +318,15 @@ if __name__ == "__main__":
     springs = {}
     masses = {}
     forces = {}
-    excentricity = {'exc_ex': 2,
+    excentricity = {'exc_ex': 0,
                     'exc_EA': 10000000000000,
                     'exc_EIy': 10000000000000,
                     'exc_EIz': 10000000000000,
                     'exc_GIt': 10000000000000,
-                    'exc_mass': 0.02,
+                    'exc_mass': 2,
                     'exc_area': 10,
                     'exc_Ip': 10}
-    calculation_param = {'fem_density': 20,
+    calculation_param = {'fem_density': 2,
                          'fem_nbr_eigen_freq': 20,
                          'fem_dmas': 0.05,
                          'fem_exc': 1}
