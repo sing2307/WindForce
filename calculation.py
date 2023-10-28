@@ -11,7 +11,7 @@ import math
 # TODO: Place function in different .py file?
 def delete_from_csr(mat, row_indices=[], col_indices=[]):
     """
-    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSR sparse matrix ``mat``.
+    Remove the rows and columns  from the CSR sparse matrix `mat`.
     WARNING: Indices of altered axes are reset in the returned matrix
     """
     if not isinstance(mat, csr_array):
@@ -56,9 +56,9 @@ class Calculation(ABCCalculation):
         super().__init__(sections, springs, masses, forces, excentricity, calculation_param)
         self.number_of_elements = []
         self.element_matrices = []
-        self.k_glob = []
-        self.m_glob = []
-        self.nodes = np.array([0])
+        self.k_glob = np.array([0], dtype=np.float64)
+        self.m_glob = np.array([0], dtype=np.float64)
+        self.nodes = np.array([0], dtype=np.float64)
         self.solution = {}
 
     def return_solution(self):
@@ -164,7 +164,7 @@ class Calculation(ABCCalculation):
                 dofs = dofs + 6
                 self.element_matrices.append({'DOFs': dofs, 'K': element_k_matrix, 'M': element_m_matrix})
         # Calculate node matrix "node_seg_ele" containing the nodes of each element of the sections.
-        nodes_seg_ele = np.column_stack((np.zeros(self.nodes.size), self.nodes, np.zeros(self.nodes.size)))
+        nodes_seg_ele = np.column_stack((np.zeros(self.nodes.size), np.zeros(self.nodes.size), self.nodes))
         # Calculate the element stiffness, mass matrix and the connectivity for each excentricity element.
         # element_length_exc is the element length of the excentricity.
         # The discretization [elements/m] equals the discretization of the shortest segment.
@@ -184,7 +184,7 @@ class Calculation(ABCCalculation):
             # Construct node matrix "nodes_exc".
             nodes_exc = np.arange(0, l_exc + element_length_exc, element_length_exc)
             nodes_exc = np.column_stack(
-                (nodes_exc, np.ones(nodes_exc.size) * np.max(nodes_seg_ele), np.zeros(nodes_exc.size)))
+                (nodes_exc, np.zeros(nodes_exc.size), np.ones(nodes_exc.size) * np.max(nodes_seg_ele)))
             self.nodes = np.append(nodes_seg_ele, nodes_exc[1:, :], axis=0)
         else:
             self.nodes = nodes_seg_ele
@@ -196,18 +196,23 @@ class Calculation(ABCCalculation):
         eigenfrequencies, eigenvectors = self.solve_system()
         print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
         print(eigenfrequencies)
-        # Calculate node displacements
+        # Calculate node displacements. The max displacement for each eigenmode is set to 1
         displacements = np.array(eigenvectors)
         displacements = np.append(np.zeros((6, len(eigenfrequencies))), displacements, axis=0)
-        # TODO: Delete rotations and add node coordinates
-        # displacements = np.delete
+        max_disp_per_mode = np.max(np.abs(displacements), axis=0)
+        displacements = np.transpose(np.transpose(displacements) / max_disp_per_mode.reshape(-1, 1))
+        displacement_ux = displacements[0::6, :]
+        displacement_uy = displacements[1::6, :]
+        displacement_uz = displacements[2::6, :]
         # Save solution
         for freq_number, (eigenfreq, solution) in enumerate(zip(eigenfrequencies, eigenvectors)):
             self.solution[freq_number] = {
                 'eigenfreq': eigenfreq,
-                'solution': solution
+                'solution': self.nodes + np.hstack((displacement_ux[:, freq_number].reshape(-1, 1),
+                                                    displacement_uy[:, freq_number].reshape(-1, 1),
+                                                    displacement_uz[:, freq_number].reshape(-1, 1)))
             }
-        # self.return_solution()
+        self.return_solution()
 
 
 class Elements:
@@ -279,18 +284,18 @@ class Elements:
             [0, -13 * l, 0, 0, 0, -3 * l ** 2, 0, -22 * l, 0, 0, 0, 4 * l ** 2]
         ], dtype=np.float64)
         transform_vertical = np.array([
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0]
         ], dtype=np.float64)
         if self.orientation == 'vertical':
             k_loc = transform_vertical @ k_loc @ np.transpose(transform_vertical)
@@ -333,3 +338,5 @@ if __name__ == "__main__":
 
     calc = Calculation(sections, springs, masses, forces, excentricity, calculation_param)
     calc.start_calc()
+    solution = calc.return_solution()
+    print(solution)
