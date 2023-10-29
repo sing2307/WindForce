@@ -668,7 +668,7 @@ class WindForceGUI(tk.Tk):
             )
             if file_path:
                 with open(file_path, "w") as file:
-                    file.write(self.solution)
+                    file.write(str(self.solution))
 
         # updates system information
         self.update_current_system_info()
