@@ -61,11 +61,13 @@ class Calculation(ABCCalculation):
         self.nodes = np.array([0], dtype=np.float64)
         self.solution = {}
 
+
     def return_solution(self):
         """
         ...
         :return:
         """
+        self.start_calc()
         return self.solution
 
     def assembly_system_matrix(self):
@@ -131,6 +133,7 @@ class Calculation(ABCCalculation):
         # Extract the section parameters in the first loop and discretize each section into a subset of elements.
         # Calculate the cross-section radii in the middle of each element
         for sefc_id, section_values in self.sections.items():
+            sefc_id = int(sefc_id)
             section_height = section_values['sec_height']
             self.number_of_elements.append((self.calculation_param['fem_density'] * round(section_height / min_height)))
             num_elements = self.number_of_elements[sefc_id]
@@ -194,8 +197,6 @@ class Calculation(ABCCalculation):
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
         eigenfrequencies, eigenvectors = self.solve_system()
-        print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
-        print(eigenfrequencies)
         # Calculate node displacements. The max displacement for each eigenmode is set to 1
         displacements = np.array(eigenvectors)
         displacements = np.append(np.zeros((6, len(eigenfrequencies))), displacements, axis=0)
@@ -212,7 +213,6 @@ class Calculation(ABCCalculation):
                                                     displacement_uy[:, freq_number].reshape(-1, 1),
                                                     displacement_uz[:, freq_number].reshape(-1, 1)))
             }
-        self.return_solution()
 
 
 class Elements:
