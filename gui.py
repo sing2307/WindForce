@@ -6,7 +6,7 @@ from tkinter import filedialog
 import numpy as np
 import copy
 import json
-
+from calculation import Calculation
 #################################################
 # Other
 AUTHOR = 'Itsame Mario, Itsame Luigi'
@@ -41,7 +41,8 @@ class WindForceGUI(tk.Tk):
         self.solution = None
         self.input_parameters_init = {'sections': {'0': {'sec_number': 0,
                                                        'sec_height': 0,
-                                                       'sec_ra': 0,
+                                                       'sec_ra_bot': 0,
+                                                       'sec_ra_top': 0,
                                                        'sec_thickness': 0,
                                                        'sec_E': 0,
                                                        'sec_G': 0,
@@ -79,7 +80,8 @@ class WindForceGUI(tk.Tk):
         # todo: wording...
         self.label_dict = {'sec_number': 'sec_number',
                       'sec_height': 'sec_height',
-                      'sec_ra': 'sec_ra',
+                      'sec_ra_bot': 'sec_ra_bot',
+                      'sec_ra_top': 'sec_ra_top',
                       'sec_thickness': 'sec_thickness',
                       'sec_E': 'sec_E',
                       'sec_G': 'sec_G',
@@ -294,7 +296,6 @@ class WindForceGUI(tk.Tk):
             self.update_canvas()
 
     def save_input_file(self):
-        print(self.input_parameters)
         file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
             filetypes=[("json Files", "*.json")],
@@ -434,7 +435,8 @@ class WindForceGUI(tk.Tk):
             """
             section_value_nbr = self.section_value_nbr.get()
             section_value_height = self.section_value_height.get()
-            section_value_ra = self.section_value_ra.get()
+            section_value_ra_bot = self.section_value_ra_bot.get()
+            section_value_ra_top = self.section_value_ra_top.get()
             section_value_thick = self.section_value_thick.get()
             section_value_emod = self.section_value_emod.get()
             section_value_gmod = self.section_value_gmod.get()
@@ -448,7 +450,8 @@ class WindForceGUI(tk.Tk):
 
             section = {'sec_number': int(section_value_nbr),
                        'sec_height': float(section_value_height),
-                       'sec_ra': float(section_value_ra),
+                       'sec_ra_bot': float(section_value_ra_bot),
+                       'sec_ra_top': float(section_value_ra_top),
                        'sec_thickness': float(section_value_thick),
                        'sec_E': float(section_value_emod),
                        'sec_G': float(section_value_gmod),
@@ -490,11 +493,21 @@ class WindForceGUI(tk.Tk):
 
         rely += rely_plus
         # sec_ra
-        section_label_ra = tk.Label(input_sections_window, text='sec_ra', font=("Arial", 12))
+        section_label_ra = tk.Label(input_sections_window, text='sec_ra_bot', font=("Arial", 12))
         section_label_ra.place(relx=0.05, rely=rely)
-        self.section_value_ra = tk.StringVar()
-        self.section_value_ra.set('0')
-        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra, font=("Arial", 10),
+        self.section_value_ra_bot = tk.StringVar()
+        self.section_value_ra_bot.set('0')
+        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_bot, font=("Arial", 10),
+                                         width=15)
+        self.section_entry_ra.place(relx=0.4, rely=rely)
+
+        rely += rely_plus
+        # sec_ra
+        section_label_ra = tk.Label(input_sections_window, text='sec_ra_top', font=("Arial", 12))
+        section_label_ra.place(relx=0.05, rely=rely)
+        self.section_value_ra_top = tk.StringVar()
+        self.section_value_ra_top.set('0')
+        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_top, font=("Arial", 10),
                                          width=15)
         self.section_entry_ra.place(relx=0.4, rely=rely)
 
@@ -620,12 +633,13 @@ class WindForceGUI(tk.Tk):
         :return:
         """
         if len(node_list) < 100:
-            x_data, y_data = zip(*node_list)
+            x_data, y_data, z_data = zip(*node_list)
             x_data = np.array(x_data)
             y_data = np.array(y_data)
-            y_interpolation = np.linspace(min(y_data), max(y_data), num=100)
-            x_interpolation = np.interp(y_interpolation, y_data, x_data)
-            new_list = list(zip(x_interpolation, y_interpolation))
+            z_data = np.array(z_data)
+            z_interpolation = np.linspace(min(z_data), max(z_data), num=100)
+            x_interpolation = np.interp(z_interpolation, z_data, x_data)
+            new_list = list(zip(x_interpolation, z_interpolation))
 
             return [[x, y] for x, y in new_list]
         else:
@@ -668,7 +682,18 @@ class WindForceGUI(tk.Tk):
             )
             if file_path:
                 with open(file_path, "w") as file:
-                    file.write(self.solution)
+                    file.write(str(self.solution))
+
+        # get calculation
+        input_parameters_calculation = [self.input_parameters['sections'],
+                                        self.input_parameters['springs'],
+                                        self.input_parameters['masses'],
+                                        self.input_parameters['forces'],
+                                        self.input_parameters['excentricity'],
+                                        self.input_parameters['calculation_param']
+                                        ]
+        calculation = Calculation(*input_parameters_calculation)
+        self.solution = calculation.return_solution()
 
         # updates system information
         self.update_current_system_info()
@@ -740,7 +765,7 @@ class WindForceGUI(tk.Tk):
                                           [0.15, 1.5], [-0.05, 2], [0, 2.5],
                                           [0.05, 3], [-0.1, 3.5], [0.2, 4]]},
                          }
-        self.solution = return_values
+        #self.solution = return_values
 
 
 if __name__ == '__main__':
