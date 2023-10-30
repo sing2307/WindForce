@@ -1,9 +1,10 @@
 from typing import Dict
 from abccalculation import ABCCalculation
 from scipy.sparse import csr_array
-from scipy.sparse.linalg import eigsh
+from scipy.sparse.linalg import lobpcg
 import numpy as np
 import math
+from time import time
 
 
 # Function to delete rows and columns from csr matrix
@@ -110,7 +111,6 @@ class Calculation(ABCCalculation):
         # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
         k_glob = delete_from_csr(k_glob, row_indices=[range(6)], col_indices=[range(6)])
         m_glob = delete_from_csr(m_glob, row_indices=[range(6)], col_indices=[range(6)])
-
         # Return global stiffness and mass matrix
         return k_glob, m_glob
 
@@ -120,8 +120,11 @@ class Calculation(ABCCalculation):
         :return:
         """
         # Solve the generalized eigenvalue problem
-        [eigenvalues_sq, eigenvector] = eigsh(self.k_glob, k=self.calculation_param['fem_nbr_eigen_freq'],
-                                              M=self.m_glob, which='SM')
+        start = time()
+        [eigenvalues_sq, eigenvector] = lobpcg(self.k_glob, np.random.random((1, self.k_glob.shape[0]))-0.5,
+                                               B=self.m_glob, largest=False, maxiter=round(self.k_glob.shape[0] * 10e2),
+                                               tol=1e-14)
+        print(time() - start)
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
 
@@ -194,8 +197,8 @@ class Calculation(ABCCalculation):
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
         eigenfrequencies, eigenvectors = self.solve_system()
-        print(f'The first {len(eigenfrequencies)} eigenfrequencies [rad/s] are:')
-        print(eigenfrequencies)
+        print(f'The first 20 eigenfrequencies [rad/s] are:')
+        print(eigenfrequencies[:20])
         # Calculate node displacements. The max displacement for each eigenmode is set to 1
         displacements = np.array(eigenvectors)
         displacements = np.append(np.zeros((6, len(eigenfrequencies))), displacements, axis=0)
@@ -324,19 +327,20 @@ if __name__ == "__main__":
     masses = {}
     forces = {}
     excentricity = {'exc_ex': 0,
-                    'exc_EA': 10000000000000,
-                    'exc_EIy': 10000000000000,
-                    'exc_EIz': 10000000000000,
-                    'exc_GIt': 10000000000000,
+                    'exc_EA': 1e11,
+                    'exc_EIy': 1e11,
+                    'exc_EIz': 1e11,
+                    'exc_GIt': 1e11,
                     'exc_mass': 2,
                     'exc_area': 10,
                     'exc_Ip': 10}
-    calculation_param = {'fem_density': 2,
+    calculation_param = {'fem_density': 20,
                          'fem_nbr_eigen_freq': 20,
                          'fem_dmas': 0.05,
                          'fem_exc': 1}
-
+    # start = time()
     calc = Calculation(sections, springs, masses, forces, excentricity, calculation_param)
     calc.start_calc()
     solution = calc.return_solution()
-    print(solution)
+    # print(time() - start)
+    # print(solution)
