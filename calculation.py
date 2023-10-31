@@ -1,7 +1,8 @@
 from typing import Dict
 from abccalculation import ABCCalculation
 from scipy.sparse import csr_array
-from scipy.sparse.linalg import lobpcg
+from scipy.sparse.linalg import eigsh
+from scipy.linalg import eigh
 import numpy as np
 import math
 from time import time
@@ -67,6 +68,7 @@ class Calculation(ABCCalculation):
         ...
         :return:
         """
+        self.start_calc()
         return self.solution
 
     def assembly_system_matrix(self):
@@ -105,14 +107,56 @@ class Calculation(ABCCalculation):
         # Create sparse matrices for K and M
         k_glob = csr_array((k_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
         m_glob = csr_array((m_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
-
-        # Assemble discrete masses and springs (TODO...)
-
-        # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
-        k_glob = delete_from_csr(k_glob, row_indices=[range(6)], col_indices=[range(6)])
-        m_glob = delete_from_csr(m_glob, row_indices=[range(6)], col_indices=[range(6)])
+        dof_isnot_zero = list(range(k_glob.shape[0]))
+        # Assemble springs  and boundary conditions
+        # Assemble stiff boundary conditions
+        k_glob = delete_from_csr(k_glob, row_indices=[2, 5], col_indices=[2, 5])
+        m_glob = delete_from_csr(m_glob, row_indices=[2, 5], col_indices=[2, 5])
+        dof_is_zero = [2, 5]
+        # Assemble elastic boundary conditions (springs), if spring stiffness = 0 a rigid bc is applied
+        if self.springs['base_phiy'] != 0:
+            k_glob[3, 3] += self.springs['base_phiy']
+        else:
+            k_glob = delete_from_csr(k_glob, row_indices=[3], col_indices=[3])
+            m_glob = delete_from_csr(m_glob, row_indices=[3], col_indices=[3])
+            dof_is_zero.append(4)
+        if self.springs['base_phix'] != 0:
+            k_glob[2, 2] += self.springs['base_phix']
+        else:
+            k_glob = delete_from_csr(k_glob, row_indices=[2], col_indices=[2])
+            m_glob = delete_from_csr(m_glob, row_indices=[2], col_indices=[2])
+            dof_is_zero.append(3)
+        if self.springs['base_cy'] != 0:
+            k_glob[1, 1] += self.springs['base_cy']
+        else:
+            k_glob = delete_from_csr(k_glob, row_indices=[1], col_indices=[1])
+            m_glob = delete_from_csr(m_glob, row_indices=[1], col_indices=[1])
+            dof_is_zero.append(1)
+        if self.springs['base_cx'] != 0:
+            k_glob[0, 0] += self.springs['base_cx']
+        else:
+            k_glob = delete_from_csr(k_glob, row_indices=[0], col_indices=[0])
+            m_glob = delete_from_csr(m_glob, row_indices=[0], col_indices=[0])
+            dof_is_zero.append(0)
+        # Assemble spring at the head of the tower
+        if self.springs['head_cx'] != 0:
+            dof_head_cx = k_glob.shape[0] - (len(self.nodes_exc) - 1) * 6 - 5 - len(dof_is_zero)
+            k_glob[dof_head_cx, dof_head_cx] += self.springs['head_cx']
+        # Assemble masses at the base and the head of the tower
+        m_glob[[0, 1, 2], [0, 1, 2]] += self.masses['base_m']
+        m_glob[[-6, -5, -4], [-6, -5, -4]] += self.masses['head_m']
+        # Assemble vector to reassemble boundary conditions
+        dof_is_zero.sort()
+        self.dof_isnot_zero = [item for item in dof_isnot_zero if item not in dof_is_zero]
         # Return global stiffness and mass matrix
-        return k_glob, m_glob
+        k_glob = round(0.5 * (k_glob + np.transpose(k_glob)), 3)
+        m_glob = round(0.5 * (m_glob + np.transpose(m_glob)), 3)
+        # Return as dense matrices if problem is small, else sparse
+        # TODO: Test at which number of dofs it is more efficient to use sparse matrices
+        if k_glob.shape[0] > 30000:
+            return k_glob, m_glob
+        elif k_glob.shape[0] <= 30000:
+            return k_glob.todense(), m_glob.todense()
 
     def solve_system(self):
         """
@@ -121,9 +165,12 @@ class Calculation(ABCCalculation):
         """
         # Solve the generalized eigenvalue problem
         start = time()
-        [eigenvalues_sq, eigenvector] = lobpcg(self.k_glob, np.random.random((1, self.k_glob.shape[0]))-0.5,
-                                               B=self.m_glob, largest=False, maxiter=round(self.k_glob.shape[0] * 10e2),
-                                               tol=1e-14)
+        if self.k_glob.shape[0] > 30000:
+            [eigenvalues_sq, eigenvector] = eigsh(self.k_glob, k=self.calculation_param['fem_nbr_eigen_freq'],
+                                                  M=self.m_glob, which='SM', maxiter=self.k_glob.shape[0]*1000)
+        elif self.k_glob.shape[0] <= 30000:
+            [eigenvalues_sq, eigenvector] = eigh(self.k_glob, b=self.m_glob,
+                                                 subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq']-1])
         print(time() - start)
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
@@ -134,6 +181,7 @@ class Calculation(ABCCalculation):
         # Extract the section parameters in the first loop and discretize each section into a subset of elements.
         # Calculate the cross-section radii in the middle of each element
         for sefc_id, section_values in self.sections.items():
+            sefc_id = int(sefc_id)
             section_height = section_values['sec_height']
             self.number_of_elements.append((self.calculation_param['fem_density'] * round(section_height / min_height)))
             num_elements = self.number_of_elements[sefc_id]
@@ -167,7 +215,7 @@ class Calculation(ABCCalculation):
                 dofs = dofs + 6
                 self.element_matrices.append({'DOFs': dofs, 'K': element_k_matrix, 'M': element_m_matrix})
         # Calculate node matrix "node_seg_ele" containing the nodes of each element of the sections.
-        nodes_seg_ele = np.column_stack((np.zeros(self.nodes.size), np.zeros(self.nodes.size), self.nodes))
+        self.nodes_seg_ele = np.column_stack((np.zeros(self.nodes.size), np.zeros(self.nodes.size), self.nodes))
         # Calculate the element stiffness, mass matrix and the connectivity for each excentricity element.
         # element_length_exc is the element length of the excentricity.
         # The discretization [elements/m] equals the discretization of the shortest segment.
@@ -185,12 +233,12 @@ class Calculation(ABCCalculation):
                 dofs = dofs + 6
                 self.element_matrices.append({'DOFs': dofs, 'K': exc_k_matrix, 'M': exc_element_m_matrix})
             # Construct node matrix "nodes_exc".
-            nodes_exc = np.arange(0, l_exc + element_length_exc, element_length_exc)
-            nodes_exc = np.column_stack(
-                (nodes_exc, np.zeros(nodes_exc.size), np.ones(nodes_exc.size) * np.max(nodes_seg_ele)))
-            self.nodes = np.append(nodes_seg_ele, nodes_exc[1:, :], axis=0)
+            self.nodes_exc = np.arange(0, l_exc + element_length_exc, element_length_exc)
+            self.nodes_exc = np.column_stack(
+                (self.nodes_exc, np.zeros(self.nodes_exc.size), np.ones(self.nodes_exc.size) * np.max(self.nodes_seg_ele)))
+            self.nodes = np.append(self.nodes_seg_ele, self.nodes_exc[1:, :], axis=0)
         else:
-            self.nodes = nodes_seg_ele
+            self.nodes = self.nodes_seg_ele
 
         # Assemble global matrices
         self.k_glob, self.m_glob = self.assembly_system_matrix()
@@ -200,8 +248,9 @@ class Calculation(ABCCalculation):
         print(f'The first 20 eigenfrequencies [rad/s] are:')
         print(eigenfrequencies[:20])
         # Calculate node displacements. The max displacement for each eigenmode is set to 1
-        displacements = np.array(eigenvectors)
-        displacements = np.append(np.zeros((6, len(eigenfrequencies))), displacements, axis=0)
+        displacements0 = np.array(eigenvectors)
+        displacements = np.zeros((max(self.dof_isnot_zero) + 1, self.calculation_param['fem_nbr_eigen_freq']))
+        displacements[self.dof_isnot_zero, :] = displacements0
         max_disp_per_mode = np.max(np.abs(displacements), axis=0)
         displacements = np.transpose(np.transpose(displacements) / max_disp_per_mode.reshape(-1, 1))
         displacement_ux = displacements[0::6, :]
@@ -215,7 +264,6 @@ class Calculation(ABCCalculation):
                                                     displacement_uy[:, freq_number].reshape(-1, 1),
                                                     displacement_uz[:, freq_number].reshape(-1, 1)))
             }
-        self.return_solution()
 
 
 class Elements:
@@ -323,8 +371,13 @@ if __name__ == "__main__":
                     'sec_E': 210000,
                     'sec_G': 81000,
                     'sec_rho': 7850}}
-    springs = {}
-    masses = {}
+    springs = {'base_cx': 0,
+               'base_cy': 0,
+               'base_phix': 0,
+               'base_phiy': 0,
+               'head_cx': 0}
+    masses = {'base_m': 0,
+              'head_m': 0}
     forces = {}
     excentricity = {'exc_ex': 0,
                     'exc_EA': 1e11,
@@ -334,13 +387,12 @@ if __name__ == "__main__":
                     'exc_mass': 2,
                     'exc_area': 10,
                     'exc_Ip': 10}
-    calculation_param = {'fem_density': 20,
+    calculation_param = {'fem_density': 100,
                          'fem_nbr_eigen_freq': 20,
                          'fem_dmas': 0.05,
                          'fem_exc': 1}
     # start = time()
     calc = Calculation(sections, springs, masses, forces, excentricity, calculation_param)
-    calc.start_calc()
     solution = calc.return_solution()
     # print(time() - start)
     # print(solution)
