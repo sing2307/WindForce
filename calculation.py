@@ -242,7 +242,7 @@ class Calculation(ABCCalculation):
         self.k_glob, self.m_glob = self.assembly_system_matrix()
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
-        print(eigenfrequencies[:20])
+        eigenfrequencies, eigenvectors = self.solve_system()
         # Calculate node displacements. The max displacement for each eigenmode is set to 1
         displacements0 = np.array(eigenvectors)
         displacements = np.zeros((max(self.dof_isnot_zero) + 1, self.calculation_param['fem_nbr_eigen_freq']))
