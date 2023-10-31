@@ -5,7 +5,7 @@ from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh
 import numpy as np
 import math
-from time import time
+
 
 
 # Function to delete rows and columns from csr matrix
@@ -164,14 +164,12 @@ class Calculation(ABCCalculation):
         :return:
         """
         # Solve the generalized eigenvalue problem
-        start = time()
         if self.k_glob.shape[0] > 30000:
             [eigenvalues_sq, eigenvector] = eigsh(self.k_glob, k=self.calculation_param['fem_nbr_eigen_freq'],
                                                   M=self.m_glob, which='SM', maxiter=self.k_glob.shape[0]*1000)
         elif self.k_glob.shape[0] <= 30000:
             [eigenvalues_sq, eigenvector] = eigh(self.k_glob, b=self.m_glob,
                                                  subset_by_index=[0, self.calculation_param['fem_nbr_eigen_freq']-1])
-        print(time() - start)
         eigenfrequencies = np.sqrt(eigenvalues_sq).real
         return eigenfrequencies, eigenvector
 
@@ -244,8 +242,6 @@ class Calculation(ABCCalculation):
         self.k_glob, self.m_glob = self.assembly_system_matrix()
 
         # Solve eigenvalue problem to calculate eigenfrequencies and eigenmodes
-        eigenfrequencies, eigenvectors = self.solve_system()
-        print(f'The first 20 eigenfrequencies [rad/s] are:')
         print(eigenfrequencies[:20])
         # Calculate node displacements. The max displacement for each eigenmode is set to 1
         displacements0 = np.array(eigenvectors)
