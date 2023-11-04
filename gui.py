@@ -7,6 +7,7 @@ import numpy as np
 import copy
 import json
 from calculation import Calculation
+
 #################################################
 # Other
 AUTHOR = 'Itsame Mario, Itsame Luigi'
@@ -39,82 +40,112 @@ class WindForceGUI(tk.Tk):
         super().__init__()
         self.init_main_window()
         self.solution = None
-        self.input_parameters_init = {'sections': {'0': {'sec_number': 0,
-                                                       'sec_height': 0,
-                                                       'sec_ra_bot': 0,
-                                                       'sec_ra_top': 0,
-                                                       'sec_thickness': 0,
-                                                       'sec_E': 0,
-                                                       'sec_G': 0,
-                                                       'sec_rho': 0}},
-                                      'springs': {'base_cx': 0,
-                                                  'base_cy': 0,
-                                                  'base_phix': 0,
-                                                  'base_phiy': 0,
-                                                  'head_cx': 0},
-                                      'masses': {'base_m': 0,
-                                                 'head_m': 0},
-                                      'forces': {'f_excite': 0,
-                                                 'f_head': 0,
-                                                 'm_head': 0,
-                                                 'f_rotor': 0,
-                                                 'qu_impulse': 0,
-                                                 'qo_impulse': 0,
-                                                 'nbr_periods': 0,
-                                                 'delta_t': 0,
-                                                 'num_1': 0,
-                                                 'num_2': 0},
-                                      'excentricity': {'exc_ex': 0,
-                                                       'exc_EA': 0,
-                                                       'exc_EIy': 0,
-                                                       'exc_EIz': 0,
-                                                       'exc_GIt': 0,
-                                                       'exc_mass': 0,
-                                                       'exc_area': 0,
-                                                       'exc_Ip': 0},
-                                      'calculation_param': {'fem_density': 0,
+        self.input_parameters_init = {'sections'         : {'0': {'sec_number'   : 0,
+                                                                  'sec_height'   : 0,
+                                                                  'sec_ra_bot'   : 0,
+                                                                  'sec_ra_top'   : 0,
+                                                                  'sec_thickness': 0,
+                                                                  'sec_E'        : 0,
+                                                                  'sec_G'        : 0,
+                                                                  'sec_rho'      : 0}},
+                                      'springs'          : {'base_cx'  : 0,
+                                                            'base_cy'  : 0,
+                                                            'base_phix': 0,
+                                                            'base_phiy': 0,
+                                                            'head_cx'  : 0},
+                                      'masses'           : {'base_m': 0,
+                                                            'head_m': 0},
+                                      'forces'           : {'f_excite'   : 0,
+                                                            'f_head'     : 0,
+                                                            'm_head'     : 0,
+                                                            'f_rotor'    : 0,
+                                                            'qu_impulse' : 0,
+                                                            'qo_impulse' : 0,
+                                                            'nbr_periods': 0,
+                                                            'delta_t'    : 0,
+                                                            'num_1'      : 0,
+                                                            'num_2'      : 0},
+                                      'excentricity'     : {'exc_ex'  : 0,
+                                                            'exc_EA'  : 0,
+                                                            'exc_EIy' : 0,
+                                                            'exc_EIz' : 0,
+                                                            'exc_GIt' : 0,
+                                                            'exc_mass': 0,
+                                                            'exc_area': 0,
+                                                            'exc_Ip'  : 0},
+                                      'calculation_param': {'fem_density'       : 0,
                                                             'fem_nbr_eigen_freq': 0,
-                                                            'fem_dmas': 0,
-                                                            'fem_exc': 0}}
+                                                            'fem_dmas'          : 0,
+                                                            'fem_exc'           : 0}}
         # label_dict to replace dict entry with text for entry fields, key to value,e.g fem_nbr_eigen_freq
         # todo: wording...
-        self.label_dict = {'sec_number': 'sec_number',
-                      'sec_height': 'sec_height',
-                      'sec_ra_bot': 'sec_ra_bot',
-                      'sec_ra_top': 'sec_ra_top',
-                      'sec_thickness': 'sec_thickness',
-                      'sec_E': 'sec_E',
-                      'sec_G': 'sec_G',
-                      'sec_rho': 'sec_rho',
-                      'base_cx': 'base_cx',
-                      'base_cy': 'base_cy',
-                      'base_phix': 'base_phix',
-                      'base_phiy': 'base_phiy',
-                      'head_cx': 'head_cx',
-                      'base_m': 'base_m',
-                      'head_m': 'head_m',
-                      'f_excite': 'f_excite',
-                      'f_head': 'f_head',
-                      'm_head': 'm_head',
-                      'f_rotor': 'f_rotor',
-                      'qu_impulse': 'qu_impulse',
-                      'qo_impulse': 'qo_impulse',
-                      'nbr_periods': 'nbr_periods',
-                      'delta_t': 'delta_t',
-                      'num_1': 'num_1',
-                      'num_2': 'num_2',
-                      'exc_ex': 'exc_ex',
-                      'exc_EA': 'exc_EA',
-                      'exc_EIy': 'exc_EIy',
-                      'exc_EIz': 'exc_EIz',
-                      'exc_GIt': 'exc_GIt',
-                      'exc_mass': 'exc_mass',
-                      'exc_area': 'exc_area',
-                      'exc_Ip': 'exc_Ip',
-                      'fem_density': 'fem_density',
-                      'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
-                      'fem_dmas': 'fem_dmas',
-                      'fem_exc': 'fem_exc'}
+        self.label_dict = {'sec_number'        : 'sec_number',
+                           'sec_height'        : 'sec_height',
+                           'sec_ra_bot'        : 'sec_ra_bot',
+                           'sec_ra_top'        : 'sec_ra_top',
+                           'sec_thickness'     : 'sec_thickness',
+                           'sec_E'             : 'sec_E',
+                           'sec_G'             : 'sec_G',
+                           'sec_rho'           : 'sec_rho',
+                           'base_cx'           : 'base_cx',
+                           'base_cy'           : 'base_cy',
+                           'base_phix'         : 'base_phix',
+                           'base_phiy'         : 'base_phiy',
+                           'head_cx'           : 'head_cx',
+                           'base_m'            : 'base_m',
+                           'head_m'            : 'head_m',
+                           'f_excite'          : 'f_excite',
+                           'f_head'            : 'f_head',
+                           'm_head'            : 'm_head',
+                           'f_rotor'           : 'f_rotor',
+                           'qu_impulse'        : 'qu_impulse',
+                           'qo_impulse'        : 'qo_impulse',
+                           'nbr_periods'       : 'nbr_periods',
+                           'delta_t'           : 'delta_t',
+                           'num_1'             : 'num_1',
+                           'num_2'             : 'num_2',
+                           'exc_ex'            : 'exc_ex',
+                           'exc_EA'            : 'exc_EA',
+                           'exc_EIy'           : 'exc_EIy',
+                           'exc_EIz'           : 'exc_EIz',
+                           'exc_GIt'           : 'exc_GIt',
+                           'exc_mass'          : 'exc_mass',
+                           'exc_area'          : 'exc_area',
+                           'exc_Ip'            : 'exc_Ip',
+                           'fem_density'       : 'fem_density',
+                           'fem_nbr_eigen_freq': 'Nbr of Eigenfreq',
+                           'fem_dmas'          : 'fem_dmas',
+                           'fem_exc'           : 'fem_exc'}
+        self.units_dict = {'base_cx'           : 'N/m',
+                           'base_cy'           : 'N/m',
+                           'base_phix'         : 'N/m',
+                           'base_phiy'         : 'N/m',
+                           'head_cx'           : 'N/m',
+                           'base_m'            : 'kg',
+                           'head_m'            : 'kg',
+                           'f_excite'          : 'Hz',
+                           'f_head'            : 'N',
+                           'm_head'            : 'Nm',
+                           'f_rotor'           : 'Hz',
+                           'qu_impulse'        : 'N/m',
+                           'qo_impulse'        : 'N/m',
+                           'nbr_periods'       : '-',
+                           'delta_t'           : 's',
+                           'num_1'             : '-',
+                           'num_2'             : '-',
+                           'exc_ex'            : 'm',
+                           'exc_EA'            : 'N',
+                           'exc_EIy'           : 'Nm²',
+                           'exc_EIz'           : 'Nm²',
+                           'exc_GIt'           : 'Nm²',
+                           'exc_mass'          : 'kg/m',
+                           'exc_area'          : 'm²',
+                           'exc_Ip'            : 'm⁴',
+                           'fem_density'       : '-',
+                           'fem_nbr_eigen_freq': '-',
+                           'fem_dmas'          : '-',
+                           'fem_exc'           : '-'
+                           }
         self.input_parameters = copy.deepcopy(self.input_parameters_init)
 
     def init_main_window(self):
@@ -242,7 +273,6 @@ class WindForceGUI(tk.Tk):
 
         return format_string
 
-
     def update_current_system_info(self):
         """
         updates the sytem information in lower part of main window
@@ -285,8 +315,8 @@ class WindForceGUI(tk.Tk):
 
     def open_input_file(self):
         file_path = filedialog.askopenfilename(
-            filetypes=[("json Files", "*.json")],
-            title="Open Input File",
+                filetypes=[("json Files", "*.json")],
+                title="Open Input File",
         )
         if file_path:
             with open(file_path, "r") as file:
@@ -297,9 +327,9 @@ class WindForceGUI(tk.Tk):
 
     def save_input_file(self):
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("json Files", "*.json")],
-            title="Save Input As",
+                defaultextension=".txt",
+                filetypes=[("json Files", "*.json")],
+                title="Save Input As",
         )
         if file_path:
             with open(file_path, "w") as file:
@@ -337,10 +367,10 @@ class WindForceGUI(tk.Tk):
         input_window.resizable(False, False)
         standard_font_1_bold = tkFont.Font(family="Arial", size=12, weight='bold')
 
-        value_type_dict = {'springs': ['Enter Springs Parameters'],
-                           'masses': ['Enter Masses Parameters'],
-                           'forces': ['Enter Forces Parameters'],
-                           'excentricity': ['Enter Excentricity Parameters'],
+        value_type_dict = {'springs'          : ['Enter Springs Parameters'],
+                           'masses'           : ['Enter Masses Parameters'],
+                           'forces'           : ['Enter Forces Parameters'],
+                           'excentricity'     : ['Enter Excentricity Parameters'],
                            'calculation_param': ['Enter Calculation Parameters']}
 
         input_label = tk.Label(input_window, text=value_type_dict[input_type][0], font=standard_font_1_bold)
@@ -356,6 +386,7 @@ class WindForceGUI(tk.Tk):
             entry_label = tk.Label(input_window, text=self.label_dict[button_text], font=("Arial", 12))
             entry_label.place(relx=0.05, rely=rely)
 
+            unit = self.units_dict[button_text]
             # entry field
             self.value_var = tk.StringVar()
             self.value_var.set('0')
@@ -363,6 +394,7 @@ class WindForceGUI(tk.Tk):
             self.entry_field.place(relx=0.45, rely=rely)
             self.entry_fields.append(self.entry_field)
             self.value_vars.append(self.value_var)
+            tk.Label(input_window, text=f"[{unit}]", font=("Arial", 12)).place(relx=0.8, rely=rely)
             rely += rely_plus
 
         # set entry button
@@ -387,13 +419,13 @@ class WindForceGUI(tk.Tk):
         for node in section_keys:
             nbr = self.input_parameters['sections'][node]['sec_number']
             length = self.input_parameters['sections'][node]['sec_height']
-            nodes.append([curr_y, curr_y +  length])
+            nodes.append([curr_y, curr_y + length])
             curr_y += length
 
         # coord transform
         max_y = max([node[1] for node in nodes])
         try:
-            factor = WindForceGUI.CANVAS_MAIN_HEIGHT/max_y * 3/4
+            factor = WindForceGUI.CANVAS_MAIN_HEIGHT / max_y * 3 / 4
         except ZeroDivisionError:
             factor = WindForceGUI.CANVAS_MAIN_HEIGHT / 0.0001 * 3 / 4
         nodes = [[math.floor(WindForceGUI.CANVAS_MAIN_HEIGHT - node[0] * factor),
@@ -406,10 +438,10 @@ class WindForceGUI(tk.Tk):
         self.add_canvas_static_elements()
 
         for node in nodes:
-            self.canvas.create_line(WindForceGUI.CANVAS_MAIN_WIDTH/2, node[0],
-                                    WindForceGUI.CANVAS_MAIN_WIDTH/2, node[1], fill='dark blue', width=8)
-            self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH/2 - 7, node[1] - 7,
-                                    WindForceGUI.CANVAS_MAIN_WIDTH/2 + 7, node[1] + 7, outline="black",
+            self.canvas.create_line(WindForceGUI.CANVAS_MAIN_WIDTH / 2, node[0],
+                                    WindForceGUI.CANVAS_MAIN_WIDTH / 2, node[1], fill='dark blue', width=8)
+            self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH / 2 - 7, node[1] - 7,
+                                    WindForceGUI.CANVAS_MAIN_WIDTH / 2 + 7, node[1] + 7, outline="black",
                                     fill="dark blue")
 
         # base
@@ -424,7 +456,6 @@ class WindForceGUI(tk.Tk):
         self.canvas.create_oval(WindForceGUI.CANVAS_MAIN_WIDTH / 2, nodes[-1][1] - 10,
                                 WindForceGUI.CANVAS_MAIN_WIDTH / 2 + 50, nodes[-1][1] + 10,
                                 outline="black", fill="gray")
-
 
     def enter_sections(self):
 
@@ -443,23 +474,22 @@ class WindForceGUI(tk.Tk):
             section_value_rho = self.section_value_rho.get()
 
             try:
-                section_value_nbr = int(section_value_nbr) # if float or text
+                section_value_nbr = int(section_value_nbr)  # if float or text
             except ValueError:
                 self.section_value_nbr.set('0')
                 section_value_nbr = 0
 
-            section = {'sec_number': int(section_value_nbr),
-                       'sec_height': float(section_value_height),
-                       'sec_ra_bot': float(section_value_ra_bot),
-                       'sec_ra_top': float(section_value_ra_top),
+            section = {'sec_number'   : int(section_value_nbr),
+                       'sec_height'   : float(section_value_height),
+                       'sec_ra_bot'   : float(section_value_ra_bot),
+                       'sec_ra_top'   : float(section_value_ra_top),
                        'sec_thickness': float(section_value_thick),
-                       'sec_E': float(section_value_emod),
-                       'sec_G': float(section_value_gmod),
-                       'sec_rho': float(section_value_rho)}
+                       'sec_E'        : float(section_value_emod),
+                       'sec_G'        : float(section_value_gmod),
+                       'sec_rho'      : float(section_value_rho)}
             self.input_parameters['sections'][str(section_value_nbr)] = section  # str since json needs str keys
             self.update_canvas()
             self.update_current_system_info()
-
 
         input_sections_window = tk.Toplevel(self)
         input_sections_window.title('Input Section Information')
@@ -480,6 +510,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_nbr = tk.Entry(input_sections_window, textvariable=self.section_value_nbr,
                                           font=("Arial", 10), width=15)
         self.section_entry_nbr.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[-]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_height
@@ -490,6 +521,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_height = tk.Entry(input_sections_window, textvariable=self.section_value_height,
                                              font=("Arial", 10), width=15)
         self.section_entry_height.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[m]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_ra
@@ -497,9 +529,11 @@ class WindForceGUI(tk.Tk):
         section_label_ra.place(relx=0.05, rely=rely)
         self.section_value_ra_bot = tk.StringVar()
         self.section_value_ra_bot.set('0')
-        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_bot, font=("Arial", 10),
+        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_bot,
+                                         font=("Arial", 10),
                                          width=15)
         self.section_entry_ra.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[m]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_ra
@@ -507,9 +541,11 @@ class WindForceGUI(tk.Tk):
         section_label_ra.place(relx=0.05, rely=rely)
         self.section_value_ra_top = tk.StringVar()
         self.section_value_ra_top.set('0')
-        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_top, font=("Arial", 10),
+        self.section_entry_ra = tk.Entry(input_sections_window, textvariable=self.section_value_ra_top,
+                                         font=("Arial", 10),
                                          width=15)
         self.section_entry_ra.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[m]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_thickness
@@ -520,6 +556,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_thick = tk.Entry(input_sections_window, textvariable=self.section_value_thick,
                                             font=("Arial", 10), width=15)
         self.section_entry_thick.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[cm]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_E
@@ -530,6 +567,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_emod = tk.Entry(input_sections_window, textvariable=self.section_value_emod,
                                            font=("Arial", 10), width=15)
         self.section_entry_emod.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[MPa]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_G
@@ -540,6 +578,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_gmod = tk.Entry(input_sections_window, textvariable=self.section_value_gmod,
                                            font=("Arial", 10), width=15)
         self.section_entry_gmod.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[MPa]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += rely_plus
         # sec_rho
@@ -550,6 +589,7 @@ class WindForceGUI(tk.Tk):
         self.section_entry_rho = tk.Entry(input_sections_window, textvariable=self.section_value_rho,
                                           font=("Arial", 10), width=15)
         self.section_entry_rho.place(relx=0.4, rely=rely)
+        tk.Label(input_sections_window, text='[kg/m³]', font=("Arial", 12)).place(relx=0.75, rely=rely)
 
         rely += (rely_plus + 0.05)
         # button add section
@@ -676,9 +716,9 @@ class WindForceGUI(tk.Tk):
 
         def button_save_output():
             file_path = filedialog.asksaveasfilename(
-                defaultextension=".txt",
-                filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
-                title="Save Output As",
+                    defaultextension=".txt",
+                    filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+                    title="Save Output As",
             )
             if file_path:
                 with open(file_path, "w") as file:
@@ -753,19 +793,19 @@ class WindForceGUI(tk.Tk):
 
     def development(self):
         return_values = {0: {'eigenfreq': 15,
-                             'solution': [[0, 0], [0.1, 0.5], [0.2, 1],
-                                          [0.15, 1.5], [0.05, 2], [0, 2.5],
-                                          [-0.05, 3], [-0.1, 3.5], [-0.2, 4]]},
+                             'solution' : [[0, 0], [0.1, 0.5], [0.2, 1],
+                                           [0.15, 1.5], [0.05, 2], [0, 2.5],
+                                           [-0.05, 3], [-0.1, 3.5], [-0.2, 4]]},
                          1: {'eigenfreq': 35,
-                             'solution': [[0, 0], [0.2, 0.5], [0.4, 1],
-                                          [0.3, 1.5], [0.1, 2], [0, 2.5],
-                                          [-0.1, 3], [-0.2, 3.5], [-3, 4]]},
+                             'solution' : [[0, 0], [0.2, 0.5], [0.4, 1],
+                                           [0.3, 1.5], [0.1, 2], [0, 2.5],
+                                           [-0.1, 3], [-0.2, 3.5], [-3, 4]]},
                          2: {'eigenfreq': 155,
-                             'solution': [[0, 0], [0.1, 0.5], [-0.2, 1],
-                                          [0.15, 1.5], [-0.05, 2], [0, 2.5],
-                                          [0.05, 3], [-0.1, 3.5], [0.2, 4]]},
+                             'solution' : [[0, 0], [0.1, 0.5], [-0.2, 1],
+                                           [0.15, 1.5], [-0.05, 2], [0, 2.5],
+                                           [0.05, 3], [-0.1, 3.5], [0.2, 4]]},
                          }
-        #self.solution = return_values
+        # self.solution = return_values
 
 
 if __name__ == '__main__':
