@@ -1,3 +1,28 @@
+"""
+#######################################################################
+LICENSE INFORMATION
+This file is part of Windforce.
+
+Windforce is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Windforce is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Windforce. If not, see <https://www.gnu.org/licenses/>.
+#######################################################################
+
+#######################################################################
+Description:
+GUI
+#######################################################################
+"""
+
 import tkinter as tk
 from PIL import Image, ImageTk
 import tkinter.font as tkFont
@@ -9,7 +34,7 @@ import json
 from calculation import Calculation
 #################################################
 # Other
-AUTHOR = 'Itsame Mario, Itsame Luigi'
+AUTHOR = 'Elias Perras, Marius Mellmann'
 VERSION_MAJOR = 1
 VERSION_MINOR = 0
 VERSION_PATCH = 0
@@ -77,7 +102,6 @@ class WindForceGUI(tk.Tk):
                                                             'fem_dmas': 0,
                                                             'fem_exc': 0}}
         # label_dict to replace dict entry with text for entry fields, key to value,e.g fem_nbr_eigen_freq
-        # todo: wording...
         self.label_dict = {'sec_number': 'sec_number',
                       'sec_height': 'sec_height',
                       'sec_ra_bot': 'sec_ra_bot',
@@ -591,7 +615,6 @@ class WindForceGUI(tk.Tk):
                                          fill='dark green', width=2)
 
         for start_point, end_point in zip(solution_nodes[1:], solution_nodes[:-1]):
-            # todo There might be an error here with the transformation mapping...
             color_scale_factor = 8
             normalized_position_start_x = (start_point[0] / self.canvas_sol_w + (
                     self.canvas_sol_w / 2) / self.canvas_sol_w) / 2
@@ -647,7 +670,7 @@ class WindForceGUI(tk.Tk):
 
     def start_calculation(self):
         """
-        todo
+        ...
         :return:
         """
 

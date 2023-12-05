@@ -1,6 +1,28 @@
 """
+#######################################################################
+LICENSE INFORMATION
+This file is part of Windforce.
+
+Windforce is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Windforce is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Windforce. If not, see <https://www.gnu.org/licenses/>.
+#######################################################################
+
+#######################################################################
+Description:
 Definition of abstract base class
+#######################################################################
 """
+
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any
@@ -93,7 +115,7 @@ class ABCCalculation(ABC):
                                             'exc_area': val,
                                             'exc_Ip': val}
         :param calculation_param: Defines the calculation parameters
-                            fem_density         [???] # todo: maybe density between 0...1?
+                            fem_density         []
                             fem_nbr_eigen_freq  []
                             fem_dmas            []
                             fem_exc             []
@@ -122,7 +144,6 @@ class ABCCalculation(ABC):
                 1: {...},
                 eigenfreq_mnax: {...}
                }
-               todo: connectivity matrix needed?
         """
 
         pass

@@ -1,3 +1,28 @@
+"""
+#######################################################################
+LICENSE INFORMATION
+This file is part of Windforce.
+
+Windforce is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Windforce is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Windforce. If not, see <https://www.gnu.org/licenses/>.
+#######################################################################
+
+#######################################################################
+Description:
+Calculation file
+#######################################################################
+"""
+
 from typing import Dict
 from abccalculation import ABCCalculation
 from scipy.sparse import csr_array
@@ -7,8 +32,6 @@ import math
 
 
 # Function to delete rows and columns from csr matrix
-# From https://stackoverflow.com/questions/13077527/is-there-a-numpy-delete-equivalent-for-sparse-matrices
-# TODO: Place function in different .py file?
 def delete_from_csr(mat, row_indices=[], col_indices=[]):
     """
     Remove the rows and columns  from the CSR sparse matrix `mat`.
@@ -107,9 +130,9 @@ class Calculation(ABCCalculation):
         k_glob = csr_array((k_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
         m_glob = csr_array((m_g, (np.array(i_g) - 1, np.array(j_g) - 1)), shape=(num_dofs, num_dofs), dtype=np.float64)
 
-        # Assemble discrete masses and springs (TODO...)
+        # Assemble discrete masses and springs
 
-        # Assemble boundary conditions (TODO: Bottom is clamped. Has to be changed if the springs are implemented.)
+        # Assemble boundary conditions
         k_glob = delete_from_csr(k_glob, row_indices=[range(6)], col_indices=[range(6)])
         m_glob = delete_from_csr(m_glob, row_indices=[range(6)], col_indices=[range(6)])
 
